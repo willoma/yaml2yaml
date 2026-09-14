@@ -66,7 +66,7 @@ func (n *node) resolveExpr(expr ast.Expr) (any, error) {
 		return nil, fmt.Errorf("pointers are %w", ErrUnsupported)
 
 	case *ast.UnaryExpr:
-		return nil, fmt.Errorf("unary expressions %w", ErrNotImplemented)
+		return n.resolveUnaryExpr(expr)
 
 	case *ast.BinaryExpr:
 		return n.resolveBinaryExpr(expr)
