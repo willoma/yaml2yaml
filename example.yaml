@@ -15,16 +15,22 @@
 !define adult:
   born in: ?year - age
   adult for: ?age - majority + " years"
+  !if wonderful:
+    person: wonderful
+  !if wonderful == false:
+    person: mediocre
 
 alice:
   !apply looks: f
   job: CEO
   !apply adult:
     age: 34
+    wonderful: true
 bob:
   !apply looks: m
   !apply adult:
     age: 28
+    wonderful: false
   job: assistant
 
 !define colors:

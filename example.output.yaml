@@ -4,11 +4,13 @@ alice:
   job: CEO
   born in: 1992
   adult for: 16 years
+  person: wonderful
 bob:
   beautiful: false
   appearance: ugly with smell
   born in: 1998
   adult for: 10 years
+  person: mediocre
   job: assistant
 lightred:
   rank: 0
