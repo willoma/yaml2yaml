@@ -1,0 +1,28 @@
+alice:
+  beautiful: true
+  appearance: strong with boobies
+  job: CEO
+  born in: 1992
+  adult for: 16 years
+bob:
+  beautiful: false
+  appearance: ugly with smell
+  born in: 1998
+  adult for: 10 years
+  job: assistant
+lightred:
+  rank: 0
+  base_color: red
+darkblue:
+  rank: 1
+  base_color: blue
+mediumgreen:
+  rank: 2
+  base_color: green
+colorslist:
+- name: lightred
+  base_color: red
+- name: darkblue
+  base_color: blue
+- name: mediumgreen
+  base_color: green
