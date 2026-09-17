@@ -8,8 +8,6 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// TODO: Reduce usage of ErrInvalid, create more specific errors (for instance, I created ErrNotMapping for this.)
-
 // Errors.
 var (
 	ErrAlreadyDefined = errors.New("already defined")
@@ -22,8 +20,6 @@ var (
 	ErrSyntaxError    = errors.New("syntax error")
 	ErrUnsupported    = errors.New("unsupported")
 )
-
-// TODO Mapping: also have the index
 
 type locatedError struct {
 	path string
