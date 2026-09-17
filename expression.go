@@ -20,6 +20,7 @@ func (n *node) resolveExpression(src string) (any, error) {
 	return result, err
 }
 
+//nolint:funlen // Exhaustive switch on expression types.
 func (n *node) resolveExpr(expr ast.Expr) (any, error) {
 	// These are all the possible expression types, according to go/ast/ast.go.
 	switch expr := expr.(type) {

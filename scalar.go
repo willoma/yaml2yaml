@@ -5,21 +5,11 @@ import (
 )
 
 func (n *node) processScalar() (*yaml.Node, error) {
-	value, eErr := n.evaluateValue()
+	return n.scalarDirective()
+}
 
-	switch n.Tag {
-	case "!apply":
-		name := anyToString(value)
+func (n *node) scalarNoDirective() (*yaml.Node, error) {
+	value, err := n.evaluateValue()
 
-		node, err := n.getDefinition(name)
-		if err != nil {
-			return anyToNode(n.Node, value), n.locatedError(err)
-		}
-
-		result, err := n.child("", node).process()
-
-		return result, joinErrors(eErr, err)
-	default:
-		return anyToNode(n.Node, value), eErr
-	}
+	return anyToNode(n.Node, value), err
 }

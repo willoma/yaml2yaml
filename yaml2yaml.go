@@ -1,3 +1,4 @@
+// Package yaml2yaml provides utilities for processing and transforming YAML data.
 package yaml2yaml
 
 import (
@@ -10,6 +11,7 @@ const (
 	indentSize = 2
 )
 
+// Bytes converts a YAML byte slice to a YAML byte slice, with any processing applied.
 func Bytes(src []byte) ([]byte, error) {
 	var node yaml.Node
 
@@ -27,9 +29,7 @@ func Bytes(src []byte) ([]byte, error) {
 	return result, pErr
 }
 
+// Process applies any processing to a YAML node, returning the processed node and any errors.
 func Process(src *yaml.Node) (*yaml.Node, error) {
 	return newNode(src).process()
 }
-
-// specificTags are tags that are processed specially by yaml2yaml, in [node.evaluateMappingChild].
-var specificTags = []string{"!define", "!apply", "!if", "!for"}

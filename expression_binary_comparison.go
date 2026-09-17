@@ -160,6 +160,7 @@ func resolveBinaryComparison(left []byte, right any, op token.Token) bool {
 		return resolveTypedComparison(string(left), right, op)
 	case []byte:
 		result := bytes.Compare(left, right)
+
 		switch op {
 		case token.EQL:
 			return result == 0
@@ -178,7 +179,6 @@ func resolveBinaryComparison(left []byte, right any, op token.Token) bool {
 		}
 	default:
 		return op == token.NEQ
-
 	}
 }
 
@@ -195,7 +195,7 @@ func resolveSliceComparison(left []any, right any, op token.Token) bool {
 		return op == token.NEQ || op == token.LSS || op == token.LEQ
 	}
 
-	for i := 0; i < len(left); i++ {
+	for i := range left {
 		if !resolveComparison(left[i], sRight[i], op) {
 			return false
 		}

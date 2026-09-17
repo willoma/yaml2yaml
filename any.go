@@ -11,64 +11,65 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func anyToString(v any) string {
-	switch v := v.(type) {
+func anyToString(value any) string {
+	switch value := value.(type) {
 	case bool:
-		return strconv.FormatBool(v)
+		return strconv.FormatBool(value)
 	case int:
-		return strconv.Itoa(v)
+		return strconv.Itoa(value)
 	case int8:
-		return strconv.FormatInt(int64(v), 10)
+		return strconv.FormatInt(int64(value), 10)
 	case int16:
-		return strconv.FormatInt(int64(v), 10)
+		return strconv.FormatInt(int64(value), 10)
 	case int32:
-		return strconv.FormatInt(int64(v), 10)
+		return strconv.FormatInt(int64(value), 10)
 	case int64:
-		return strconv.FormatInt(v, 10)
+		return strconv.FormatInt(value, 10)
 	case float32:
-		return strconv.FormatFloat(float64(v), 'f', -1, 64)
+		return strconv.FormatFloat(float64(value), 'f', -1, 64)
 	case float64:
-		return strconv.FormatFloat(v, 'f', -1, 64)
+		return strconv.FormatFloat(value, 'f', -1, 64)
 	case string:
-		return v
+		return value
 	case []any:
-		result := make([]string, len(v))
-		for i, item := range v {
+		result := make([]string, len(value))
+		for i, item := range value {
 			result[i] = anyToString(item)
 		}
+
 		return strings.Join(result, ", ")
 	case nil:
 		return ""
 	default:
-		return fmt.Sprintf("%v", v)
+		return fmt.Sprintf("%v", value)
 	}
 }
 
-func anyToNode(src *yaml.Node, v any) *yaml.Node {
-	switch v := v.(type) {
+func anyToNode(src *yaml.Node, value any) *yaml.Node {
+	switch value := value.(type) {
 	case bool:
-		return scalarNode(src, "!!bool", strconv.FormatBool(v))
+		return scalarNode(src, "!!bool", strconv.FormatBool(value))
 	case int:
-		return scalarNode(src, "!!int", strconv.Itoa(v))
+		return scalarNode(src, "!!int", strconv.Itoa(value))
 	case int8:
-		return scalarNode(src, "!!int", strconv.FormatInt(int64(v), 10))
+		return scalarNode(src, "!!int", strconv.FormatInt(int64(value), 10))
 	case int16:
-		return scalarNode(src, "!!int", strconv.FormatInt(int64(v), 10))
+		return scalarNode(src, "!!int", strconv.FormatInt(int64(value), 10))
 	case int32:
-		return scalarNode(src, "!!int", strconv.FormatInt(int64(v), 10))
+		return scalarNode(src, "!!int", strconv.FormatInt(int64(value), 10))
 	case int64:
-		return scalarNode(src, "!!int", strconv.FormatInt(v, 10))
+		return scalarNode(src, "!!int", strconv.FormatInt(value, 10))
 	case float32:
-		return scalarNode(src, "!!float", strconv.FormatFloat(float64(v), 'f', -1, 64))
+		return scalarNode(src, "!!float", strconv.FormatFloat(float64(value), 'f', -1, 64))
 	case float64:
-		return scalarNode(src, "!!float", strconv.FormatFloat(v, 'f', -1, 64))
+		return scalarNode(src, "!!float", strconv.FormatFloat(value, 'f', -1, 64))
 	case string:
-		return scalarNode(src, "!!str", v)
+		return scalarNode(src, "!!str", value)
 	case []byte:
-		return scalarNode(src, "!!binary", base64.StdEncoding.EncodeToString(v))
+		return scalarNode(src, "!!binary", base64.StdEncoding.EncodeToString(value))
 	case []any:
-		content := make([]*yaml.Node, 0, len(v))
-		for _, item := range v {
+		content := make([]*yaml.Node, 0, len(value))
+		for _, item := range value {
 			if child := anyToNode(src, item); child != nil {
 				content = append(content, child)
 			}
@@ -79,9 +80,9 @@ func anyToNode(src *yaml.Node, v any) *yaml.Node {
 			Content: content,
 		}
 	case map[string]any:
-		content := make([]*yaml.Node, 0, 2*len(v))
-		for _, key := range slices.Sorted(maps.Keys(v)) {
-			if child := anyToNode(src, v[key]); child != nil {
+		content := make([]*yaml.Node, 0, 2*len(value))
+		for _, key := range slices.Sorted(maps.Keys(value)) {
+			if child := anyToNode(src, value[key]); child != nil {
 				content = append(content, scalarNode(src, "!!str", key), child)
 			}
 		}
@@ -91,7 +92,7 @@ func anyToNode(src *yaml.Node, v any) *yaml.Node {
 			Content: content,
 		}
 	default:
-		return scalarNode(src, src.Tag, fmt.Sprintf("%v", v))
+		return scalarNode(src, src.Tag, fmt.Sprintf("%v", value))
 	}
 }
 
@@ -110,21 +111,18 @@ func nodeToAny(node *yaml.Node) (any, error) {
 	switch node.Kind {
 	case yaml.DocumentNode:
 		return nodeToAny(node.Content[0])
-
 	case yaml.AliasNode:
 		return nodeToAny(node.Alias)
-
 	case yaml.SequenceNode:
 		return sequenceToAny(node)
-
 	case yaml.MappingNode:
 		return mappingToAny(node)
-
 	case yaml.ScalarNode:
 		return scalarToAny(node)
-
+	case yaml.StreamNode:
+		return nil, fmt.Errorf("%w kind stream", ErrUnsupported)
 	default:
-		return nil, fmt.Errorf("%w kind: %v", ErrUnsupported, kindString(node.Kind))
+		return nil, fmt.Errorf("%w unknown kind", ErrUnsupported)
 	}
 }
 
@@ -169,6 +167,7 @@ func mappingToAny(node *yaml.Node) (any, error) {
 	return children, joinErrors(errs...)
 }
 
+//nolint:wrapcheck // Original errors are ok.
 func scalarToAny(node *yaml.Node) (any, error) {
 	switch node.Tag {
 	case "!!bool":

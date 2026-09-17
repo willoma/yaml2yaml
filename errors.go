@@ -10,6 +10,7 @@ import (
 
 // TODO: Reduce usage of ErrInvalid, create more specific errors (for instance, I created ErrNotMapping for this.)
 
+// Errors.
 var (
 	ErrAlreadyDefined = errors.New("already defined")
 	ErrInvalid        = errors.New("invalid")
@@ -22,7 +23,6 @@ var (
 	ErrUnsupported    = errors.New("unsupported")
 )
 
-// TODO Have key in path if needed to identify the child node
 // TODO Mapping: also have the index
 
 type locatedError struct {
@@ -33,6 +33,7 @@ type locatedError struct {
 
 func (e *locatedError) Error() string {
 	nodeHasLoc := e.node != nil && e.node.Line > 0 && e.node.Column > 0
+
 	switch {
 	case nodeHasLoc && e.path != "":
 		return fmt.Sprintf("[%d:%d] %s: %s", e.node.Line, e.node.Column, e.path, e.err)
@@ -59,10 +60,6 @@ func (m mappingChild) valueLocatedError(err error) *locatedError {
 	}
 
 	return &locatedError{path: m.path, node: m.value, err: err}
-}
-
-func nodeLocatedError(path string, node *yaml.Node, err error) *locatedError {
-	return &locatedError{path: path, node: node, err: err}
 }
 
 type multiErrors []error

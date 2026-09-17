@@ -1,3 +1,4 @@
+// Command-line tool for processing YAML data.
 package main
 
 import (
@@ -8,6 +9,7 @@ import (
 	"github.com/willoma/yaml2yaml"
 )
 
+//nolint:funlen // It's not THAT long
 func main() {
 	var err error
 
@@ -18,6 +20,7 @@ func main() {
 	if len(os.Args) > 1 {
 		inputName = os.Args[1]
 
+		//nolint:gosec // Input name is provided by the user, do as they say.
 		input, err = os.Open(inputName)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Opening %s: %v\n", inputName, err)
@@ -52,6 +55,7 @@ func main() {
 	if len(os.Args) > 2 {
 		outputName = os.Args[2]
 
+		//nolint:gosec // Input name is provided by the user, do as they say.
 		output, err = os.Create(os.Args[2])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Creating %s: %v\n", outputName, err)

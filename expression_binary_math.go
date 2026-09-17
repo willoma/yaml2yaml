@@ -48,7 +48,9 @@ func resolveIntMath(left int, right any, op token.Token) (result any, lErr, opEr
 			return strings.Repeat(right, left), nil, nil, nil
 		}
 
-		return resolveStringsMath(strconv.Itoa(left), right, op)
+		result, opErr = resolveStringsMath(strconv.Itoa(left), right, op)
+
+		return result, nil, opErr, nil
 	case []byte:
 		if op == token.MUL {
 			return bytes.Repeat(right, left), nil, nil, nil
@@ -95,7 +97,9 @@ func resolveFloatMath(left float64, right any, op token.Token) (result any, lErr
 			return resolveFloatsMath(left, fRight, op)
 		}
 
-		return resolveStringsMath(strconv.FormatFloat(left, 'f', -1, 64), right, op)
+		result, opErr = resolveStringsMath(strconv.FormatFloat(left, 'f', -1, 64), right, op)
+
+		return result, nil, opErr, nil
 	case []byte:
 		return resolveBinariesMath([]byte(strconv.FormatFloat(left, 'f', -1, 64)), right, op)
 	case []any:
@@ -135,14 +139,15 @@ func resolveStringMath(left string, right any, op token.Token) (result any, lErr
 			return strings.Repeat(left, right), nil, nil, nil
 		}
 
-		return resolveStringsMath(left, strconv.Itoa(right), op)
+		result, opErr = resolveStringsMath(left, strconv.Itoa(right), op)
 	case float64:
 		if fLeft, err := strconv.ParseFloat(left, 64); err == nil {
 			return resolveFloatsMath(fLeft, right, op)
 		}
-		return resolveStringsMath(left, strconv.FormatFloat(right, 'f', -1, 64), op)
+
+		result, opErr = resolveStringsMath(left, strconv.FormatFloat(right, 'f', -1, 64), op)
 	case string:
-		return resolveStringsMath(left, right, op)
+		result, opErr = resolveStringsMath(left, right, op)
 	case []byte:
 		return resolveBinariesMath([]byte(left), right, op)
 	case []any:
@@ -150,14 +155,16 @@ func resolveStringMath(left string, right any, op token.Token) (result any, lErr
 	default:
 		return nil, nil, nil, fmt.Errorf("%w type %T for mathematical operation", ErrInvalid, right)
 	}
+
+	return result, lErr, opErr, rErr
 }
 
-func resolveStringsMath(left, right string, op token.Token) (result string, lErr, opErr, rErr error) {
+func resolveStringsMath(left, right string, op token.Token) (string, error) {
 	switch op {
 	case token.ADD:
-		return left + right, nil, nil, nil
+		return left + right, nil
 	default:
-		return "", nil, fmt.Errorf("%w operation %s with strings", ErrInvalid, op.String()), nil
+		return "", fmt.Errorf("%w operation %s with strings", ErrInvalid, op.String())
 	}
 }
 
@@ -181,6 +188,7 @@ func resolveBinaryMath(left []byte, right any, op token.Token) (result any, lErr
 		if fLeft, err := strconv.ParseFloat(string(left), 64); err == nil {
 			return resolveFloatsMath(fLeft, right, op)
 		}
+
 		return resolveBinariesMath(left, []byte(strconv.FormatFloat(right, 'f', -1, 64)), op)
 	case string:
 		return resolveBinariesMath(left, []byte(right), op)
@@ -230,7 +238,6 @@ func resolveSlicesMath(left, right []any, op token.Token) (result any, lErr, opE
 	}
 
 	return nil, nil, fmt.Errorf("%w operation %s with lists", ErrInvalid, op.String()), nil
-
 }
 
 func resolveMapMath(left map[string]any, right any, op token.Token) (result any, lErr, opErr, rErr error) {
@@ -238,6 +245,7 @@ func resolveMapMath(left map[string]any, right any, op token.Token) (result any,
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("%w type %T for mathematical operation", ErrInvalid, right)
 	}
+
 	if op == token.ADD {
 		result := make(map[string]any, len(left)+len(mRight))
 		maps.Copy(result, left)

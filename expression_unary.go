@@ -19,6 +19,5 @@ func (n *node) resolveUnaryExpr(expr *ast.UnaryExpr) (any, error) {
 		return !bVal, nil
 	default:
 		return nil, joinErrors(vErr, fmt.Errorf("operator %q %w", expr.Op.String(), ErrUnsupported))
-
 	}
 }

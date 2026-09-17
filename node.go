@@ -20,6 +20,8 @@ type node struct {
 func newNode(src *yaml.Node) *node {
 	return &node{
 		Node:        src,
+		path:        "",
+		parent:      nil,
 		definitions: make(map[string]*yaml.Node),
 	}
 }
@@ -38,7 +40,7 @@ func (n *node) indexedChild(i int, src *yaml.Node) *node {
 }
 
 func (n *node) keyedChild(tag, key string, src *yaml.Node) *node {
-	if slices.Contains(specificTags, tag) {
+	if slices.Contains(directivesTags, tag) {
 		key = tag + " " + key
 	}
 
@@ -62,17 +64,10 @@ func (n *node) process() (*yaml.Node, error) {
 		return n.processMapping()
 	case yaml.ScalarNode:
 		return n.processScalar()
+	case yaml.StreamNode:
+		return nil, n.locatedError(fmt.Errorf("%w kind stream", ErrUnsupported))
 	default:
-		return nil, n.locatedError(fmt.Errorf("%w kind %s", ErrUnsupported, kindString(n.Kind)))
-	}
-}
-
-func (n *node) clone() *node {
-	return &node{
-		Node:        n.Node,
-		path:        n.path,
-		parent:      n.parent,
-		definitions: n.definitions,
+		return nil, n.locatedError(fmt.Errorf("%w unnamed kind", ErrUnsupported))
 	}
 }
 

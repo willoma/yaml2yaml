@@ -7,6 +7,7 @@ import (
 	"strconv"
 )
 
+//nolint:wrapcheck // Original errors are ok.
 func (n *node) resolveBasicLit(expr *ast.BasicLit) (any, error) {
 	switch expr.Kind {
 	case token.INT:

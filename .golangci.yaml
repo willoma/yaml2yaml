@@ -1,0 +1,43 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    - arangolint # No arangodb
+    - bodyclose # No HTTP
+    - canonicalheader # No HTTP
+    - clickhouselint # No clickhouse
+    - cyclop # I prefer gocognit
+    - depguard # No need to avoid some dependencies
+    - exhaustive # Many switches are not exhaustive in this codebase
+    - exhaustruct # Replaced by exhaustruct_v5
+    - exhaustruct_v5 # Too annoying
+    - gocyclo # I prefer gocognit
+    - goheader # No specific header to check
+    - gomodguard # Replaced by gomodguard_v2
+    - gomodguard_v2 # No need to avoid some dependencies
+    - mnd # Magic numbers don't bother me
+    - noinlineerr # I like inline errs
+    - nonamedreturns # Named returns may be useful
+    - nosprintfhostport # No URL building
+    - promlinter # No prometheus
+    - protogetter # No protobuf
+    - rowserrcheck # No SQL
+    - spancheck # No OpenTelemetry
+    - sqlclosecheck # No SQL
+    - testifylint # We do not use testify
+    - unqueryvet # No SQL
+    - whitespace # We already have wsl_v5
+    - wsl # Replaced by wsl_v5
+    - zerologlint # No zerolog
+  settings:
+    gocritic:
+      enable-all: true
+    gosec:
+      excludes:
+        - G104 # We already have errcheck
+    varnamelen:
+      ignore-decls:
+        - i int
+        - op token.Token
+        - ok bool
