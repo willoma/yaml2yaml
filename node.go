@@ -26,17 +26,22 @@ func newNode(src *yaml.Node) *node {
 	}
 }
 
-func (n *node) child(pathSuffix string, src *yaml.Node) *node {
+func (n *node) sameLevel(src *yaml.Node) *node {
 	return &node{
 		Node:        src,
-		path:        n.path + pathSuffix,
-		parent:      n,
+		path:        n.path,
+		parent:      n.parent,
 		definitions: make(map[string]*yaml.Node),
 	}
 }
 
 func (n *node) indexedChild(i int, src *yaml.Node) *node {
-	return n.child("["+strconv.Itoa(i)+"]", src)
+	return &node{
+		Node:        src,
+		path:        n.path + "[" + strconv.Itoa(i) + "]",
+		parent:      n,
+		definitions: make(map[string]*yaml.Node),
+	}
 }
 
 func (n *node) keyedChild(tag, key string, src *yaml.Node) *node {
@@ -49,13 +54,18 @@ func (n *node) keyedChild(tag, key string, src *yaml.Node) *node {
 		pathSuffix = "." + key
 	}
 
-	return n.child(pathSuffix, src)
+	return &node{
+		Node:        src,
+		path:        n.path + pathSuffix,
+		parent:      n,
+		definitions: make(map[string]*yaml.Node),
+	}
 }
 
 func (n *node) process() (*yaml.Node, error) {
 	switch n.Kind {
 	case yaml.DocumentNode:
-		return n.child("", n.Content[0]).process()
+		return n.sameLevel(n.Content[0]).process()
 	case yaml.AliasNode:
 		return n.keyedChild("", "alias:"+n.Alias.Anchor, n.Alias).process()
 	case yaml.SequenceNode:

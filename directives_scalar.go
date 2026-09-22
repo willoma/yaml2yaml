@@ -20,7 +20,7 @@ func (n *node) applyScalar() (*yaml.Node, error) {
 		return anyToNode(n.Node, value), n.locatedError(err)
 	}
 
-	result, err := n.child("", node).process()
+	result, err := n.sameLevel(node).process()
 
 	return result, joinErrors(eErr, err)
 }

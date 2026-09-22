@@ -63,12 +63,6 @@ func (n *node) processMapping() (*yaml.Node, error) {
 func (n *node) toMappingChild() (mappingChild, error) {
 	resultValue, vErr := n.process()
 	if resultValue.Kind == yaml.MappingNode {
-		if len(resultValue.Content) == 0 {
-			pErr := n.passDefinitionsToParent()
-
-			return mappingChild{}, joinErrors(vErr, pErr)
-		}
-
 		return mappingChild{kvs: resultValue.Content}, vErr
 	}
 

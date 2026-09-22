@@ -14,7 +14,7 @@ func (n *node) resolveIdent(expr *ast.Ident) (any, error) {
 			return nil, dErr
 		}
 
-		node, pErr := n.child("", def).process()
+		node, pErr := n.sameLevel(def).process()
 		value, vErr := nodeToAny(node)
 
 		return value, joinErrors(pErr, vErr)
