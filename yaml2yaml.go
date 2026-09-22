@@ -7,9 +7,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const (
-	indentSize = 2
-)
+const indentSize = 2
 
 // Bytes converts a YAML byte slice to a YAML byte slice, with any processing applied.
 func Bytes(src []byte) ([]byte, error) {
