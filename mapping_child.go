@@ -11,24 +11,35 @@ import (
 //   - both are nil if child is to be ignored
 type mappingChild struct {
 	path  string
-	kvs   []*yaml.Node
+	key   *yaml.Node
 	value *yaml.Node
 }
 
-func (n *node) evaluateMappingChild(key, value *node) (mappingChild, error) {
-	if key.Kind != yaml.ScalarNode {
-		keyResult, kErr := key.process()
-		valueResult, vErr := value.process()
-
-		return mappingChild{kvs: []*yaml.Node{keyResult, valueResult}}, joinErrors(kErr, vErr)
+func nodeToMappingChild(path string, node *yaml.Node) ([]mappingChild, error) {
+	if node == nil {
+		return nil, nil
 	}
 
-	return n.mappingDirective(key, value)
-}
+	if node.Kind != yaml.MappingNode {
+		return []mappingChild{{path: path, value: node}}, nil
+	}
 
-func (n *node) mappingNoDirective(key, value *node) (mappingChild, error) {
-	keyResult, kErr := key.process()
-	valueResult, vErr := value.process()
+	var errs []error
 
-	return mappingChild{kvs: []*yaml.Node{keyResult, valueResult}}, joinErrors(kErr, vErr)
+	children := make([]mappingChild, 0, len(node.Content)/2)
+
+	for i := 0; i < len(node.Content); i += 2 {
+		keyAny, err := nodeToAny(node.Content[i])
+		if err != nil {
+			errs = append(errs, err)
+		}
+
+		children = append(children, mappingChild{
+			path:  childPath(path, anyToString(keyAny)),
+			key:   node.Content[i],
+			value: node.Content[i+1],
+		})
+	}
+
+	return children, joinErrors(errs...)
 }

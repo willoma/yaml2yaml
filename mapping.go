@@ -7,14 +7,10 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func (n *node) mappingLength() int {
-	return len(n.Content) / 2
-}
-
 func (n *node) processMapping() (*yaml.Node, error) {
 	var errs []error
 
-	children := make([]mappingChild, 0, n.mappingLength())
+	children := make([]mappingChild, 0, len(n.Content)/2)
 
 	for i := 0; i < len(n.Content); i += 2 {
 		keyNode := n.Content[i]
@@ -24,47 +20,88 @@ func (n *node) processMapping() (*yaml.Node, error) {
 			keyValue = strconv.Itoa(i / 2)
 		}
 
-		keyedKey := n.keyedChild(keyNode.Tag, keyValue, keyNode)
+		key := n.keyedChild(keyNode.Tag, keyValue, keyNode)
+		value := n.keyedChild(keyNode.Tag, keyValue, n.Content[i+1])
 
-		result, err := n.evaluateMappingChild(
-			keyedKey,
-			n.keyedChild(keyNode.Tag, keyValue, n.Content[i+1]),
-		)
-		if err != nil {
-			errs = append(errs, err)
+		if key.Kind == yaml.ScalarNode {
+			thisChildren, err := n.mappingDirective(key, value)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			children = append(children, thisChildren...)
+
+			continue
+		}
+		keyResult, kErr := key.process()
+		if kErr != nil {
+			errs = append(errs, kErr)
 		}
 
-		result.path = keyedKey.path
+		valueResult, vErr := value.process()
+		if vErr != nil {
+			errs = append(errs, vErr)
+		}
 
-		children = append(children, result)
+		children = append(children, mappingChild{path: key.path, key: keyResult, value: valueResult})
 	}
 
-	if len(children) == 1 && children[0].value != nil {
-		// Only one child, which is a single value: replace the whole mapping with the single evaluated value.
-		return children[0].value, nil
+	result, err := n.processMappingChildren(children)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	return result, joinErrors(errs...)
+}
+
+func (n *node) processMappingChildren(children []mappingChild) (*yaml.Node, error) {
+	var errs []error
+
+	switch len(children) {
+	case 0:
+		// No children: pass definitions to parent and return nil.
+		for name, value := range n.definitions {
+			err := n.parent.setDefinition(name, value)
+			if err != nil {
+				errs = append(errs, n.locatedError(err))
+			}
+		}
+
+		return nil, joinErrors(errs...)
+	case 1:
+		if children[0].key == nil {
+			// Only one child, which is a single value: replace the whole mapping with the single evaluated value.
+			return children[0].value, nil
+		}
+
+		return &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{children[0].key, children[0].value}}, joinErrors(errs...)
+	}
+
+	if children[0].key == nil {
+		// Hopefully, the children are all sequence nodes: flatten them into a single sequence node.
+		childrenNodes := make([]*yaml.Node, 0, len(children))
+		for _, child := range children {
+			if child.key != nil || child.value.Kind != yaml.SequenceNode {
+				errs = append(errs, child.locatedError(fmt.Errorf("%w: unkeyed value as mapping entry", ErrInvalid)))
+			}
+
+			childrenNodes = append(childrenNodes, child.value.Content...)
+		}
+
+		if len(childrenNodes) == 0 {
+			return nil, joinErrors(errs...)
+		}
+
+		return &yaml.Node{Kind: yaml.SequenceNode, Content: childrenNodes}, joinErrors(errs...)
 	}
 
 	childrenNodes := make([]*yaml.Node, 0, 2*len(children))
 	for _, child := range children {
-		if child.value != nil {
-			errs = append(errs, child.valueLocatedError(fmt.Errorf("%w: single value as mapping entry", ErrInvalid)))
+		if child.key == nil {
+			errs = append(errs, child.locatedError(fmt.Errorf("%w: single value as mapping entry", ErrInvalid)))
 		}
 
-		childrenNodes = append(childrenNodes, child.kvs...)
-	}
-
-	if len(childrenNodes) == 0 {
-		errs = append(errs, n.passDefinitionsToParent())
+		childrenNodes = append(childrenNodes, child.key, child.value)
 	}
 
 	return &yaml.Node{Kind: yaml.MappingNode, Content: childrenNodes}, joinErrors(errs...)
-}
-
-func (n *node) toMappingChild() (mappingChild, error) {
-	resultValue, vErr := n.process()
-	if resultValue.Kind == yaml.MappingNode {
-		return mappingChild{kvs: resultValue.Content}, vErr
-	}
-
-	return mappingChild{value: resultValue}, vErr
 }

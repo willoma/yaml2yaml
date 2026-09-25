@@ -7,7 +7,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func (n *node) mappingDirective(key, value *node) (mappingChild, error) {
+func (n *node) mappingDirective(key, value *node) ([]mappingChild, error) {
 	switch key.Tag {
 	case dirDefine:
 		return n.defineMapping(key, value)
@@ -18,11 +18,14 @@ func (n *node) mappingDirective(key, value *node) (mappingChild, error) {
 	case dirFor:
 		return n.forMapping(key, value)
 	default:
-		return n.mappingNoDirective(key, value)
+		keyResult, kErr := key.process()
+		valueResult, vErr := value.process()
+
+		return []mappingChild{{path: key.path, key: keyResult, value: valueResult}}, joinErrors(kErr, vErr)
 	}
 }
 
-func (n *node) defineMapping(key, value *node) (mappingChild, error) {
+func (n *node) defineMapping(key, value *node) ([]mappingChild, error) {
 	keyValue, kErr := key.evaluateValue()
 	name := anyToString(keyValue)
 
@@ -31,52 +34,55 @@ func (n *node) defineMapping(key, value *node) (mappingChild, error) {
 		dErr = key.locatedError(dErr)
 	}
 
-	return mappingChild{}, joinErrors(kErr, dErr)
+	return nil, joinErrors(kErr, dErr)
 }
 
-func (n *node) applyMapping(key, value *node) (mappingChild, error) {
+func (n *node) applyMapping(key, value *node) ([]mappingChild, error) {
 	keyValue, kErr := key.evaluateValue()
 	name := anyToString(keyValue)
 
 	node, dErr := n.getDefinition(name)
 	if dErr != nil {
-		return mappingChild{}, joinErrors(kErr, dErr)
+		return nil, joinErrors(kErr, dErr)
 	}
 
 	resultValue := n.keyedChild(key.Tag, key.Value, node)
 	aErr := resultValue.applyDefinitions(value.Node)
-	result, rErr := resultValue.toMappingChild()
 
-	return result, joinErrors(kErr, aErr, rErr)
+	processedResultValue, vErr := resultValue.process()
+	result, cErr := nodeToMappingChild(key.path, processedResultValue)
+
+	return result, joinErrors(kErr, aErr, vErr, cErr)
 }
 
-func (n *node) ifMapping(key, value *node) (mappingChild, error) {
+func (n *node) ifMapping(key, value *node) ([]mappingChild, error) {
 	expr, eErr := key.resolveExpression(key.Value)
 
 	if !anyToBool(expr) {
-		return mappingChild{}, eErr
+		return nil, eErr
 	}
 
-	result, vErr := value.toMappingChild()
+	resultValue, vErr := value.process()
+	result, cErr := nodeToMappingChild(key.path, resultValue)
 
-	return result, joinErrors(eErr, vErr)
+	return result, joinErrors(eErr, vErr, cErr)
 }
 
-func (n *node) forMapping(key, value *node) (mappingChild, error) {
+func (n *node) forMapping(key, value *node) ([]mappingChild, error) {
 	keyValue, kErr := key.evaluateValue()
 	name := anyToString(keyValue)
 
 	seq, dErr := n.getDefinition(name)
 	if dErr != nil {
-		return mappingChild{}, joinErrors(kErr, dErr)
+		return nil, joinErrors(kErr, dErr)
 	}
 
 	if seq.Kind != yaml.SequenceNode {
-		return mappingChild{}, fmt.Errorf("%w: !for expression must be a sequence", ErrInvalid)
+		return nil, fmt.Errorf("%w: !for expression must be a sequence", ErrInvalid)
 	}
 
 	if value.Kind != yaml.SequenceNode && value.Kind != yaml.MappingNode {
-		return mappingChild{}, fmt.Errorf("%w: !for content must be a sequence or a mapping", ErrInvalid)
+		return nil, fmt.Errorf("%w: !for content must be a sequence or a mapping", ErrInvalid)
 	}
 
 	errs := []error{kErr}
@@ -108,9 +114,8 @@ func (n *node) forMapping(key, value *node) (mappingChild, error) {
 		result.Content = append(result.Content, childResult.Content...)
 	}
 
-	if value.Kind == yaml.MappingNode {
-		return mappingChild{kvs: result.Content}, joinErrors(errs...)
-	}
+	children, cErr := nodeToMappingChild(name, result)
+	errs = append(errs, cErr)
 
-	return mappingChild{value: result}, joinErrors(errs...)
+	return children, joinErrors(errs...)
 }

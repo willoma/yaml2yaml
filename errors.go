@@ -50,11 +50,7 @@ func (n *node) locatedError(err error) *locatedError {
 	return &locatedError{path: n.path, node: n.Node, err: err}
 }
 
-func (m mappingChild) valueLocatedError(err error) *locatedError {
-	if m.value == nil {
-		return &locatedError{err: err}
-	}
-
+func (m mappingChild) locatedError(err error) error {
 	return &locatedError{path: m.path, node: m.value, err: err}
 }
 

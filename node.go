@@ -49,14 +49,9 @@ func (n *node) keyedChild(tag, key string, src *yaml.Node) *node {
 		key = tag + " " + key
 	}
 
-	pathSuffix := key
-	if n.path != "" {
-		pathSuffix = "." + key
-	}
-
 	return &node{
 		Node:        src,
-		path:        n.path + pathSuffix,
+		path:        childPath(n.path, key),
 		parent:      n,
 		definitions: make(map[string]*yaml.Node),
 	}
@@ -92,4 +87,12 @@ func (n *node) evaluateValue() (any, error) {
 	}
 
 	return result, nil
+}
+
+func childPath(path, key string) string {
+	if path == "" {
+		return key
+	}
+
+	return path + "." + key
 }

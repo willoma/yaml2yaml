@@ -50,16 +50,3 @@ func (n *node) getDefinition(name string) (*yaml.Node, error) {
 
 	return n.parent.getDefinition(name)
 }
-
-func (n *node) passDefinitionsToParent() error {
-	var errs []error
-
-	for name, value := range n.definitions {
-		err := n.parent.setDefinition(name, value)
-		if err != nil {
-			errs = append(errs, n.locatedError(err))
-		}
-	}
-
-	return joinErrors(errs...)
-}
