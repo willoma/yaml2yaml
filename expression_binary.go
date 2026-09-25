@@ -34,7 +34,7 @@ func (n *node) resolveBinaryExpr(expr *ast.BinaryExpr) (any, error) {
 		opErr = fmt.Errorf("binary expressions %w", ErrNotImplemented)
 
 	case token.LAND, token.LOR:
-		result, lErr, rErr = resolveAndOr(left, right, expr.Op)
+		result = resolveAndOr(left, right, expr.Op)
 
 	case token.EQL, token.LSS, token.GTR, token.NEQ, token.LEQ, token.GEQ:
 		result = resolveComparison(left, right, expr.Op)
@@ -46,22 +46,13 @@ func (n *node) resolveBinaryExpr(expr *ast.BinaryExpr) (any, error) {
 	return result, joinErrors(lErr, opErr, rErr)
 }
 
-func resolveAndOr(left, right any, op token.Token) (result any, lErr, rErr error) {
-	bLeft, ok := left.(bool)
-	if !ok {
-		lErr = fmt.Errorf("left: %w", ErrNotBoolean)
-	}
-
-	bRight, ok := right.(bool)
-	if !ok {
-		rErr = fmt.Errorf("right: %w", ErrNotBoolean)
-	}
+func resolveAndOr(left, right any, op token.Token) bool {
+	bLeft := anyToBool(left)
+	bRight := anyToBool(right)
 
 	if op == token.LAND {
-		result = bLeft && bRight
-	} else {
-		result = bLeft || bRight
+		return bLeft && bRight
 	}
 
-	return result, lErr, rErr
+	return bLeft || bRight
 }
