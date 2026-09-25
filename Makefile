@@ -21,5 +21,5 @@ lintfix:
 test:
 	go tool ginkgo
 
-dist/yaml2yaml:
+dist/yaml2yaml: *.go
 	CGO_ENABLED=0 go build -o dist/yaml2yaml cmd/yaml2yaml/main.go
