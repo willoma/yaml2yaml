@@ -16,6 +16,29 @@ func (n *node) setDefinition(name string, value *yaml.Node) error {
 	return nil
 }
 
+func (n *node) applyDefinitions(value *yaml.Node) error {
+	if value.Kind != yaml.MappingNode {
+		return n.setDefinition("_", value)
+	}
+
+	var errs []error
+
+	for i := 0; i < len(value.Content); i += 2 {
+		keyAny, err := nodeToAny(value.Content[i])
+		if err != nil {
+			errs = append(errs, err)
+		}
+
+		key := anyToString(keyAny)
+
+		if err := n.setDefinition(key, value.Content[i+1]); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return joinErrors(errs...)
+}
+
 func (n *node) getDefinition(name string) (*yaml.Node, error) {
 	if value, ok := n.definitions[name]; ok {
 		return value, nil

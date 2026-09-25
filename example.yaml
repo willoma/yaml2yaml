@@ -42,11 +42,11 @@ bob:
     variant: medium
 
 !for colors:
-  ?_.variant + _.base:
+  ?variant + base:
     rank: ?i
-    base_color: ?_.base
+    base_color: ?base
 
 colorslist:
   !for colors:
-    - name: ?_.variant + _.base
-      base_color: ?_.base
+    - name: ?variant + base
+      base_color: ?base

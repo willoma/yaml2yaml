@@ -44,32 +44,10 @@ func (n *node) applyMapping(key, value *node) (mappingChild, error) {
 	}
 
 	resultValue := n.keyedChild(key.Tag, key.Value, node)
-
-	errs := []error{kErr}
-
-	if value.Kind == yaml.MappingNode {
-		for i := 0; i < len(value.Content); i += 2 {
-			keyAny, err := nodeToAny(value.Content[i])
-			if err != nil {
-				errs = append(errs, err)
-			}
-
-			key := anyToString(keyAny)
-
-			if err := resultValue.setDefinition(key, value.Content[i+1]); err != nil {
-				errs = append(errs, err)
-			}
-		}
-	} else {
-		//nolint:errcheck // resultValue has just been created, _ is not already defined
-		resultValue.setDefinition("_", value.Node)
-	}
-
+	aErr := resultValue.applyDefinitions(value.Node)
 	result, rErr := resultValue.toMappingChild()
 
-	errs = append(errs, rErr)
-
-	return result, joinErrors(errs...)
+	return result, joinErrors(kErr, aErr, rErr)
 }
 
 func (n *node) ifMapping(key, value *node) (mappingChild, error) {
@@ -125,8 +103,9 @@ func (n *node) forMapping(key, value *node) (mappingChild, error) {
 		//nolint:errcheck // child has just been created, i is not already defined
 		child.setDefinition("i", idx)
 
-		//nolint:errcheck // child has just been created, _ is not already defined
-		child.setDefinition("_", seqNode)
+		if err := child.applyDefinitions(seqNode); err != nil {
+			errs = append(errs, err)
+		}
 
 		childResult, err := child.process()
 		if err != nil {
