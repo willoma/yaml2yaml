@@ -50,3 +50,6 @@ colorslist:
   !for colors:
     - name: ?variant + base
       base_color: ?base
+
+!if colors:
+  has_colors: true

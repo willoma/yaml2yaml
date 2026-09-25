@@ -28,3 +28,4 @@ colorslist:
   base_color: blue
 - name: mediumgreen
   base_color: green
+has_colors: true

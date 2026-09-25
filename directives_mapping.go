@@ -53,14 +53,7 @@ func (n *node) applyMapping(key, value *node) (mappingChild, error) {
 func (n *node) ifMapping(key, value *node) (mappingChild, error) {
 	expr, eErr := key.resolveExpression(key.Value)
 
-	eval, ok := expr.(bool)
-	if !ok {
-		err := key.locatedError(fmt.Errorf("%w: !if expression must evaluate to a boolean, got %q", ErrInvalid, expr))
-
-		return mappingChild{}, joinErrors(eErr, err)
-	}
-
-	if !eval {
+	if !anyToBool(expr) {
 		return mappingChild{}, eErr
 	}
 
