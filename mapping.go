@@ -28,6 +28,7 @@ func (n *node) processMapping() (*yaml.Node, error) {
 			if err != nil {
 				errs = append(errs, err)
 			}
+
 			children = append(children, thisChildren...)
 
 			continue
