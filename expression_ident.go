@@ -1,6 +1,10 @@
 package yaml2yaml
 
-import "go/ast"
+import (
+	"go/ast"
+
+	"github.com/willoma/yaml2yaml/errors"
+)
 
 func (n *node) resolveIdent(expr *ast.Ident) (any, error) {
 	switch expr.Name {
@@ -9,7 +13,7 @@ func (n *node) resolveIdent(expr *ast.Ident) (any, error) {
 	case "false":
 		return false, nil
 	default:
-		def := n.getDefinition(expr.Name)
+		def := n.definitions.Get(expr.Name)
 		if def == nil {
 			//nolint:nilnil // Nil as a value is useful here.
 			return nil, nil
@@ -18,6 +22,6 @@ func (n *node) resolveIdent(expr *ast.Ident) (any, error) {
 		node, pErr := n.sameLevel(def).process()
 		value, vErr := nodeToAny(node)
 
-		return value, joinErrors(pErr, vErr)
+		return value, errors.Join(pErr, vErr)
 	}
 }

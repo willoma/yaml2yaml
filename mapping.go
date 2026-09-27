@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 func (n *node) processMapping() (*yaml.Node, error) {
@@ -52,7 +54,7 @@ func (n *node) processMapping() (*yaml.Node, error) {
 		errs = append(errs, err)
 	}
 
-	return result, joinErrors(errs...)
+	return result, errors.Join(errs...)
 }
 
 func (n *node) processMappingChildren(children []mappingChild) (*yaml.Node, error) {
@@ -60,20 +62,9 @@ func (n *node) processMappingChildren(children []mappingChild) (*yaml.Node, erro
 
 	switch len(children) {
 	case 0:
-		if n.parent == nil {
-			//nolint:nilnil // Nil is expected when processing empty root node.
-			return nil, nil
-		}
-
 		// No children: pass definitions to parent and return nil.
-		for name, value := range n.definitions {
-			err := n.parent.setDefinition(name, value)
-			if err != nil {
-				errs = append(errs, n.locatedError(err))
-			}
-		}
+		return nil, n.definitions.PassToParent()
 
-		return nil, joinErrors(errs...)
 	case 1:
 		if children[0].key == nil {
 			// Only one child, which is a single value: replace the whole mapping with the single evaluated value.
@@ -83,7 +74,7 @@ func (n *node) processMappingChildren(children []mappingChild) (*yaml.Node, erro
 		return &yaml.Node{
 			Kind:    yaml.MappingNode,
 			Content: []*yaml.Node{children[0].key, children[0].value},
-		}, joinErrors(errs...)
+		}, errors.Join(errs...)
 	}
 
 	if children[0].key == nil {
@@ -98,10 +89,10 @@ func (n *node) processMappingChildren(children []mappingChild) (*yaml.Node, erro
 		}
 
 		if len(childrenNodes) == 0 {
-			return nil, joinErrors(errs...)
+			return nil, errors.Join(errs...)
 		}
 
-		return &yaml.Node{Kind: yaml.SequenceNode, Content: childrenNodes}, joinErrors(errs...)
+		return &yaml.Node{Kind: yaml.SequenceNode, Content: childrenNodes}, errors.Join(errs...)
 	}
 
 	childrenNodes := make([]*yaml.Node, 0, 2*len(children))
@@ -113,5 +104,5 @@ func (n *node) processMappingChildren(children []mappingChild) (*yaml.Node, erro
 		childrenNodes = append(childrenNodes, child.key, child.value)
 	}
 
-	return &yaml.Node{Kind: yaml.MappingNode, Content: childrenNodes}, joinErrors(errs...)
+	return &yaml.Node{Kind: yaml.MappingNode, Content: childrenNodes}, errors.Join(errs...)
 }

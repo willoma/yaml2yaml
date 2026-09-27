@@ -3,6 +3,8 @@ package yaml2yaml
 import (
 	"fmt"
 	"go/ast"
+
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 func (n *node) resolveSelectorExpr(expr *ast.SelectorExpr) (any, error) {
@@ -13,12 +15,12 @@ func (n *node) resolveSelectorExpr(expr *ast.SelectorExpr) (any, error) {
 
 	x, xErr := n.resolveExpr(expr.X)
 	if xErr != nil {
-		return nil, joinErrors(sErr, xErr)
+		return nil, errors.Join(sErr, xErr)
 	}
 
 	xMap, ok := x.(map[string]any)
 	if !ok {
-		return nil, joinErrors(sErr, fmt.Errorf("left: %w", ErrNotMapping))
+		return nil, errors.Join(sErr, fmt.Errorf("left: %w", ErrNotMapping))
 	}
 
 	return xMap[expr.Sel.Name], nil

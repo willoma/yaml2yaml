@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 func (n *node) resolveUnaryExpr(expr *ast.UnaryExpr) (any, error) {
@@ -13,11 +15,11 @@ func (n *node) resolveUnaryExpr(expr *ast.UnaryExpr) (any, error) {
 	case token.NOT:
 		bVal, ok := value.(bool)
 		if !ok {
-			return false, joinErrors(vErr, ErrNotBoolean)
+			return false, errors.Join(vErr, ErrNotBoolean)
 		}
 
 		return !bVal, nil
 	default:
-		return nil, joinErrors(vErr, fmt.Errorf("operator %q %w", expr.Op.String(), ErrUnsupported))
+		return nil, errors.Join(vErr, fmt.Errorf("operator %q %w", expr.Op.String(), ErrUnsupported))
 	}
 }

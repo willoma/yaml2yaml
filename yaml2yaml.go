@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 const indentSize = 2
@@ -21,7 +23,7 @@ func ProcessBytes(src []byte) ([]byte, error) {
 
 	result, err := yaml.Dump(parsed, yaml.WithIndent(indentSize))
 	if err != nil {
-		return nil, joinErrors(pErr, fmt.Errorf("converting data to YAML: %w", err))
+		return nil, errors.Join(pErr, fmt.Errorf("converting data to YAML: %w", err))
 	}
 
 	return result, pErr
@@ -38,7 +40,7 @@ func ProcessFile(path string) ([]byte, error) {
 
 	result, err := yaml.Dump(parsed, yaml.WithIndent(indentSize))
 	if err != nil {
-		return nil, joinErrors(pErr, fmt.Errorf("converting data to YAML: %w", err))
+		return nil, errors.Join(pErr, fmt.Errorf("converting data to YAML: %w", err))
 	}
 
 	return result, pErr

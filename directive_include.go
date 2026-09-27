@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 func (n *node) includeMapping(key, value *node) ([]mappingChild, error) {
@@ -31,7 +33,7 @@ func (n *node) includeMapping(key, value *node) ([]mappingChild, error) {
 		vErr = n.locatedError(fmt.Errorf("%w on include", ErrUnexpectedValue))
 	}
 
-	return result, joinErrors(kErr, rErr, cErr, vErr)
+	return result, errors.Join(kErr, rErr, cErr, vErr)
 }
 
 func (n *node) includeScalar() (*yaml.Node, error) {
@@ -39,7 +41,7 @@ func (n *node) includeScalar() (*yaml.Node, error) {
 	path := anyToString(value)
 	includedValue, rErr := n.readInclude(path)
 
-	return includedValue, joinErrors(eErr, rErr)
+	return includedValue, errors.Join(eErr, rErr)
 }
 
 func (n *node) readInclude(path string) (*yaml.Node, error) {
@@ -92,7 +94,7 @@ func (n *node) readDirIncludes(path string) (*yaml.Node, error) {
 		}
 	}
 
-	return result, joinErrors(errs...)
+	return result, errors.Join(errs...)
 }
 
 func (n *node) readFileInclude(path string) (*yaml.Node, error) {

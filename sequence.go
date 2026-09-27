@@ -2,6 +2,8 @@ package yaml2yaml
 
 import (
 	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 func (n *node) sequenceLength() int {
@@ -24,5 +26,5 @@ func (n *node) processSequence() (*yaml.Node, error) {
 		}
 	}
 
-	return &yaml.Node{Kind: yaml.SequenceNode, Content: children}, joinErrors(errs...)
+	return &yaml.Node{Kind: yaml.SequenceNode, Content: children}, errors.Join(errs...)
 }

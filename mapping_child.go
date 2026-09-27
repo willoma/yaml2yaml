@@ -2,6 +2,8 @@ package yaml2yaml
 
 import (
 	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 // mappingChild is the result of evaluating a mapping child.
@@ -41,5 +43,5 @@ func nodeToMappingChild(path string, node *yaml.Node) ([]mappingChild, error) {
 		})
 	}
 
-	return children, joinErrors(errs...)
+	return children, errors.Join(errs...)
 }

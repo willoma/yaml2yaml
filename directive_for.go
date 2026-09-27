@@ -5,13 +5,15 @@ import (
 	"strconv"
 
 	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 func (n *node) forMapping(key, value *node) ([]mappingChild, error) {
 	keyValue, kErr := key.evaluateValue()
 	name := anyToString(keyValue)
 
-	seq := n.getDefinition(name)
+	seq := n.definitions.Get(name)
 	if seq == nil {
 		return nil, nil
 	}
@@ -39,9 +41,9 @@ func (n *node) forMapping(key, value *node) ([]mappingChild, error) {
 		idx := scalarNode(seqNode, "!!int", strconv.Itoa(i))
 
 		//nolint:errcheck // child has just been created, i is not already defined
-		child.setDefinition("i", idx)
+		child.definitions.Set("i", idx)
 
-		if err := child.applyDefinitions(seqNode); err != nil {
+		if err := child.definitions.SetFromNode(seqNode); err != nil {
 			errs = append(errs, err)
 		}
 
@@ -56,5 +58,5 @@ func (n *node) forMapping(key, value *node) ([]mappingChild, error) {
 	children, cErr := nodeToMappingChild(name, result)
 	errs = append(errs, cErr)
 
-	return children, joinErrors(errs...)
+	return children, errors.Join(errs...)
 }

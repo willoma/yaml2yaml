@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 func anyToBool(value any) bool {
@@ -169,7 +171,7 @@ func sequenceToAny(node *yaml.Node) (any, error) {
 		children[i] = child
 	}
 
-	return children, joinErrors(errs...)
+	return children, errors.Join(errs...)
 }
 
 func mappingToAny(node *yaml.Node) (any, error) {
@@ -193,7 +195,7 @@ func mappingToAny(node *yaml.Node) (any, error) {
 		children[key] = child
 	}
 
-	return children, joinErrors(errs...)
+	return children, errors.Join(errs...)
 }
 
 //nolint:wrapcheck // Original errors are ok.

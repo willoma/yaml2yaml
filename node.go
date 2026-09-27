@@ -7,22 +7,22 @@ import (
 	"strings"
 
 	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/definitions"
 )
 
 type node struct {
 	*yaml.Node
 
 	path        string
-	parent      *node
-	definitions map[string]*yaml.Node
+	definitions *definitions.Definitions
 }
 
 func newNode(src *yaml.Node) *node {
 	return &node{
 		Node:        src,
 		path:        "",
-		parent:      nil,
-		definitions: make(map[string]*yaml.Node),
+		definitions: definitions.New(),
 	}
 }
 
@@ -30,8 +30,7 @@ func (n *node) sameLevel(src *yaml.Node) *node {
 	return &node{
 		Node:        src,
 		path:        n.path,
-		parent:      n.parent,
-		definitions: make(map[string]*yaml.Node),
+		definitions: n.definitions.Sibling(),
 	}
 }
 
@@ -39,8 +38,7 @@ func (n *node) fileChild(path string, src *yaml.Node) *node {
 	return &node{
 		Node:        src,
 		path:        path + ":" + n.path,
-		parent:      n,
-		definitions: make(map[string]*yaml.Node),
+		definitions: n.definitions.Child(),
 	}
 }
 
@@ -48,8 +46,7 @@ func (n *node) indexedChild(i int, src *yaml.Node) *node {
 	return &node{
 		Node:        src,
 		path:        n.path + "[" + strconv.Itoa(i) + "]",
-		parent:      n,
-		definitions: make(map[string]*yaml.Node),
+		definitions: n.definitions.Child(),
 	}
 }
 
@@ -61,8 +58,7 @@ func (n *node) keyedChild(tag, key string, src *yaml.Node) *node {
 	return &node{
 		Node:        src,
 		path:        childPath(n.path, key),
-		parent:      n,
-		definitions: make(map[string]*yaml.Node),
+		definitions: n.definitions.Child(),
 	}
 }
 

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 func (n *node) resolveBinaryExpr(expr *ast.BinaryExpr) (any, error) {
@@ -17,7 +19,7 @@ func (n *node) resolveBinaryExpr(expr *ast.BinaryExpr) (any, error) {
 		rErr = fmt.Errorf("right: %w", rErr)
 	}
 
-	if err := joinErrors(lErr, rErr); err != nil {
+	if err := errors.Join(lErr, rErr); err != nil {
 		return nil, err
 	}
 
@@ -43,7 +45,7 @@ func (n *node) resolveBinaryExpr(expr *ast.BinaryExpr) (any, error) {
 		opErr = fmt.Errorf("operator %q %w", expr.Op.String(), ErrUnsupported)
 	}
 
-	return result, joinErrors(lErr, opErr, rErr)
+	return result, errors.Join(lErr, opErr, rErr)
 }
 
 func resolveAndOr(left, right any, op token.Token) bool {

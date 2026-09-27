@@ -1,6 +1,10 @@
 package yaml2yaml
 
-import "go.yaml.in/yaml/v4"
+import (
+	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/errors"
+)
 
 const (
 	dirApply   = "!apply"
@@ -35,7 +39,7 @@ func (n *node) mappingDirective(key, value *node) ([]mappingChild, error) {
 		keyResult, kErr := key.process()
 		valueResult, vErr := value.process()
 
-		return []mappingChild{{path: key.path, key: keyResult, value: valueResult}}, joinErrors(kErr, vErr)
+		return []mappingChild{{path: key.path, key: keyResult, value: valueResult}}, errors.Join(kErr, vErr)
 	}
 }
 

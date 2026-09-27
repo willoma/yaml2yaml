@@ -5,6 +5,8 @@ import (
 	"slices"
 
 	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 func mergeNodes(left, right *yaml.Node) (*yaml.Node, error) {
@@ -156,7 +158,7 @@ func mergeMappingContent(left, right []*yaml.Node) ([]*yaml.Node, error) {
 
 	result = append(result, right...)
 
-	return result, joinErrors(errs...)
+	return result, errors.Join(errs...)
 }
 
 func nodesEqual(left, right *yaml.Node) bool {

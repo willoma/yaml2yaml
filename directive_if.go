@@ -1,5 +1,7 @@
 package yaml2yaml
 
+import "github.com/willoma/yaml2yaml/errors"
+
 func (n *node) ifMapping(key, value *node) ([]mappingChild, error) {
 	expr, eErr := key.resolveExpression(key.Value)
 
@@ -10,5 +12,5 @@ func (n *node) ifMapping(key, value *node) ([]mappingChild, error) {
 	resultValue, vErr := value.process()
 	result, cErr := nodeToMappingChild(key.path, resultValue)
 
-	return result, joinErrors(eErr, vErr, cErr)
+	return result, errors.Join(eErr, vErr, cErr)
 }
