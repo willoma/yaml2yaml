@@ -32,8 +32,8 @@ The output is always re-emitted with 2-space indentation.
 
 ## Directives
 
-Directives are written as YAML tags on mapping keys. yaml2yaml recognizes four
-special tags: `!define`, `!apply`, `!if`, and `!for`.
+Directives are written as YAML tags on mapping keys. yaml2yaml recognizes five
+special tags: `!define`, `!apply`, `!if`, `!for`, and `!include`.
 
 ### `!define` — define a reusable value
 
@@ -71,10 +71,20 @@ alice:
 When the argument is a single scalar or sequence, it is bound to the special
 name `_`. When the argument is a mapping, each key becomes a definition.
 
+`!apply` can also be used as a scalar value (`key: !apply name`), in which case
+the value is replaced by the named definition.
+
+Applying a name that is not defined is an error — unlike expressions, `!apply`
+requires the definition to exist.
+
 ### `!if` — conditional inclusion
 
-Includes its body only when the expression in the key evaluates to a boolean
-`true`. The expression uses the same syntax as inline expressions (see below).
+Includes its body only when the expression in the key is truthy. The
+expression uses the same syntax as inline expressions (see below), but is not
+restricted to booleans: `false`, `0`, `0.0`, `""`, empty sequences, empty
+mappings, and `nil` are falsy; any other value is truthy. An identifier that
+is not defined resolves to `nil`, so the condition simply evaluates to false
+instead of failing.
 
 ```yaml
 !define looks:
@@ -86,9 +96,14 @@ Includes its body only when the expression in the key evaluates to a boolean
 
 ### `!for` — loop over a sequence
 
-Iterates over a previously defined sequence. For each item, the special names
-`_` (the current item) and `i` (the zero-based index) are defined inside the
-loop body. The body may be a mapping or a sequence.
+Iterates over a previously defined sequence. If the name is not defined, the
+loop produces nothing and does not fail; if it is defined but is not a
+sequence, an error is reported. The body must be a mapping or a sequence.
+
+For each item, the zero-based index is bound to the name `i`. When the item
+is a mapping, each of its keys becomes a definition inside the loop body;
+when the item is a scalar or a sequence, the item itself is bound to the
+special name `_`.
 
 ```yaml
 !define colors:
@@ -98,10 +113,38 @@ loop body. The body may be a mapping or a sequence.
     variant: dark
 
 !for colors:
-  ?_.variant + _.base:
+  ?variant + base:
     rank: ?i
-    base_color: ?_.base
+    base_color: ?base
 ```
+
+### `!include` — include another file
+
+Loads another YAML file, processes it, and inlines the result in place of the
+directive. The path is relative to the current working directory, and the key
+may be an expression. An `!include` entry must not have a value.
+
+```yaml
+!include common/definitions.yaml:
+!include ?dir + "/" + name + ".yaml":
+```
+
+The included file is processed with access to the definitions in scope at the
+include point. An included file containing only `!define` directives passes
+its definitions to the including scope, making it a convenient way to share
+common definitions.
+
+`!include` can also be used as a scalar value, in which case it is replaced by
+the processed content of the file:
+
+```yaml
+fragment: !include fragment.yaml
+```
+
+If the path is a directory, all the files it contains are included
+recursively, in filename order, and merged together: mappings are merged key
+by key, sequences are concatenated, and scalars from later files replace
+earlier ones. Merging incompatible kinds is an error.
 
 ## Expressions
 
@@ -126,6 +169,13 @@ to parent mappings:
 - ?majority    # the "majority" definition
 ```
 
+An identifier that is not defined resolves to `nil` without failing. `nil` is
+falsy, so `!if` conditions and the `&&`/`||` operators treat undefined values
+as `false`. In comparisons, `nil` never equals anything: `?undefined == x` is
+always `false` — even when `x` is itself undefined — while `?x != undefined`
+is `true` whenever `x` is defined. Used alone, a `nil` value is rendered as
+`<nil>`.
+
 The special name `_` refers to the current argument or loop item, and `i`
 refers to the current loop index.
 
@@ -134,9 +184,12 @@ refers to the current loop index.
 Selector expressions (`.`) access fields of a mapping value:
 
 ```yaml
-?_.base        # the "base" field of the current item
-?_.variant     # the "variant" field of the current item
+- ?color.base        # the "base" field of the current item
+- ?color.variant     # the "variant" field of the current item
 ```
+
+Accessing a field of a value that is not a mapping (including an undefined
+value) is an error.
 
 ### Literals
 
@@ -152,11 +205,11 @@ Expressions support integer, float, and string literals using Go syntax:
 
 The following operators are supported:
 
-| Category    | Operators                                  |
-|-------------|--------------------------------------------|
-| Arithmetic  | `+` `-` `*` `/` `%`                        |
-| Comparison  | `==` `!=` `<` `>` `<=` `>=`                |
-| Logical     | `&&` `\|\|`                                |
+| Category   | Operators                   |
+| ---------- | --------------------------- |
+| Arithmetic | `+` `-` `*` `/` `%`         |
+| Comparison | `==` `!=` `<` `>` `<=` `>=` |
+| Logical    | `&&` `\|\|`                 |
 
 Arithmetic and comparison operators perform automatic type coercion between
 integers, floats, strings, booleans, and byte slices where it makes sense. For
@@ -165,14 +218,20 @@ sequences, and numeric strings are parsed when combined with numbers.
 
 ## Example
 
-Given the input `example.yaml`:
+Given the input `example.yaml`, which includes `example.include.yaml`:
 
 ```yaml
+# example.include.yaml
 !define majority: 18
 !define year: 2026
 !define man:
   !define is: ugly
   !define has: smell
+```
+
+```yaml
+# example.yaml
+!include example.include.yaml:
 
 !define looks:
   !if _ == "f":
@@ -185,16 +244,22 @@ Given the input `example.yaml`:
 !define adult:
   born in: ?year - age
   adult for: ?age - majority + " years"
+  !if wonderful:
+    person: wonderful
+  !if wonderful == false:
+    person: mediocre
 
 alice:
   !apply looks: f
   job: CEO
   !apply adult:
     age: 34
+    wonderful: true
 bob:
   !apply looks: m
   !apply adult:
     age: 28
+    wonderful: false
   job: assistant
 
 !define colors:
@@ -206,14 +271,17 @@ bob:
     variant: medium
 
 !for colors:
-  ?_.variant + _.base:
+  ?variant + base:
     rank: ?i
-    base_color: ?_.base
+    base_color: ?base
 
 colorslist:
   !for colors:
-    - name: ?_.variant + _.base
-      base_color: ?_.base
+    - name: ?variant + base
+      base_color: ?base
+
+!if colors:
+  has_colors: true
 ```
 
 Running `yaml2yaml example.yaml` produces:
@@ -225,11 +293,13 @@ alice:
   job: CEO
   born in: 1992
   adult for: 16 years
+  person: wonderful
 bob:
   beautiful: false
   appearance: ugly with smell
   born in: 1998
   adult for: 10 years
+  person: mediocre
   job: assistant
 lightred:
   rank: 0
@@ -241,12 +311,13 @@ mediumgreen:
   rank: 2
   base_color: green
 colorslist:
-- name: lightred
-  base_color: red
-- name: darkblue
-  base_color: blue
-- name: mediumgreen
-  base_color: green
+  - name: lightred
+    base_color: red
+  - name: darkblue
+    base_color: blue
+  - name: mediumgreen
+    base_color: green
+has_colors: true
 ```
 
 ## Library usage
@@ -256,13 +327,18 @@ yaml2yaml can also be used as a Go library:
 ```go
 import "github.com/willoma/yaml2yaml"
 
-result, err := yaml2yaml.Bytes(input)
+result, err := yaml2yaml.ProcessFile("input.yaml")
 ```
 
-`yaml2yaml.Bytes` parses the input YAML, processes all directives and
-expressions, and returns the resulting YAML bytes. A lower-level
-`yaml2yaml.Process` function is also available for operating directly on
-`yaml.Node` values.
+Three entry points are available:
+
+- `yaml2yaml.ProcessBytes(src []byte) ([]byte, error)` parses the input YAML,
+  processes all directives and expressions, and returns the resulting YAML
+  bytes.
+- `yaml2yaml.ProcessFile(path string) ([]byte, error)` does the same starting
+  from a file path.
+- `yaml2yaml.Process(src *yaml.Node) (*yaml.Node, error)` is the lower-level
+  entry point, operating directly on `yaml.Node` values.
 
 ## License
 
