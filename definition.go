@@ -39,13 +39,13 @@ func (n *node) applyDefinitions(value *yaml.Node) error {
 	return joinErrors(errs...)
 }
 
-func (n *node) getDefinition(name string) (*yaml.Node, error) {
+func (n *node) getDefinition(name string) *yaml.Node {
 	if value, ok := n.definitions[name]; ok {
-		return value, nil
+		return value
 	}
 
 	if n.parent == nil {
-		return nil, fmt.Errorf("%q is %w", name, ErrNotDefined)
+		return nil
 	}
 
 	return n.parent.getDefinition(name)

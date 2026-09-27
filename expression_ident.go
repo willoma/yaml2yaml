@@ -9,9 +9,9 @@ func (n *node) resolveIdent(expr *ast.Ident) (any, error) {
 	case "false":
 		return false, nil
 	default:
-		def, dErr := n.getDefinition(expr.Name)
-		if dErr != nil {
-			return nil, dErr
+		def := n.getDefinition(expr.Name)
+		if def == nil {
+			return nil, nil
 		}
 
 		node, pErr := n.sameLevel(def).process()
