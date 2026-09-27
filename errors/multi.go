@@ -2,9 +2,9 @@ package errors
 
 import "strings"
 
-type multiErrors []error
+type multi []error
 
-func (e multiErrors) Error() string {
+func (e multi) Error() string {
 	var buf strings.Builder
 
 	buf.WriteString(e[0].Error())
@@ -19,9 +19,13 @@ func (e multiErrors) Error() string {
 
 func Join(errs ...error) error {
 	result := make([]error, 0, len(errs))
-	for _, e := range errs {
-		if e != nil {
-			result = append(result, e)
+	for _, err := range errs {
+		if err != nil {
+			if mErr, ok := err.(multi); ok {
+				result = append(result, mErr...)
+			} else {
+				result = append(result, err)
+			}
 		}
 	}
 
@@ -31,6 +35,6 @@ func Join(errs ...error) error {
 	case 1:
 		return result[0]
 	default:
-		return multiErrors(result)
+		return multi(result)
 	}
 }
