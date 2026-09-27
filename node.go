@@ -35,6 +35,15 @@ func (n *node) sameLevel(src *yaml.Node) *node {
 	}
 }
 
+func (n *node) fileChild(path string, src *yaml.Node) *node {
+	return &node{
+		Node:        src,
+		path:        path + ":" + n.path,
+		parent:      n,
+		definitions: make(map[string]*yaml.Node),
+	}
+}
+
 func (n *node) indexedChild(i int, src *yaml.Node) *node {
 	return &node{
 		Node:        src,

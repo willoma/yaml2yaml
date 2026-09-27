@@ -3,10 +3,11 @@ package yaml2yaml
 import "go.yaml.in/yaml/v4"
 
 const (
-	dirApply  = "!apply"
-	dirDefine = "!define"
-	dirFor    = "!for"
-	dirIf     = "!if"
+	dirApply   = "!apply"
+	dirDefine  = "!define"
+	dirFor     = "!for"
+	dirIf      = "!if"
+	dirInclude = "!include"
 )
 
 //nolint:gochecknoglobals // List of directives tags, never modified...
@@ -15,6 +16,7 @@ var directivesTags = []string{
 	dirDefine,
 	dirFor,
 	dirIf,
+	dirInclude,
 }
 
 func (n *node) mappingDirective(key, value *node) ([]mappingChild, error) {
@@ -27,6 +29,8 @@ func (n *node) mappingDirective(key, value *node) ([]mappingChild, error) {
 		return n.forMapping(key, value)
 	case dirIf:
 		return n.ifMapping(key, value)
+	case dirInclude:
+		return n.includeMapping(key, value)
 	default:
 		keyResult, kErr := key.process()
 		valueResult, vErr := value.process()
@@ -39,6 +43,8 @@ func (n *node) scalarDirective() (*yaml.Node, error) {
 	switch n.Tag {
 	case dirApply:
 		return n.applyScalar()
+	case dirInclude:
+		return n.includeScalar()
 	default:
 		return n.scalarNoDirective()
 	}

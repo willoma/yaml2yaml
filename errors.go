@@ -10,15 +10,17 @@ import (
 
 // Errors.
 var (
-	ErrAlreadyDefined = errors.New("already defined")
-	ErrInvalid        = errors.New("invalid")
-	ErrNotBoolean     = errors.New("not boolean")
-	ErrNotComparable  = errors.New("not comparable")
-	ErrNotDefined     = errors.New("not defined")
-	ErrNotImplemented = errors.New("not implemented")
-	ErrNotMapping     = errors.New("not a mapping")
-	ErrSyntaxError    = errors.New("syntax error")
-	ErrUnsupported    = errors.New("unsupported")
+	ErrAlreadyDefined  = errors.New("already defined")
+	ErrCannotMerge     = errors.New("cannot merge")
+	ErrInvalid         = errors.New("invalid")
+	ErrNotBoolean      = errors.New("not boolean")
+	ErrNotComparable   = errors.New("not comparable")
+	ErrNotDefined      = errors.New("not defined")
+	ErrNotImplemented  = errors.New("not implemented")
+	ErrNotMapping      = errors.New("not a mapping")
+	ErrSyntaxError     = errors.New("syntax error")
+	ErrUnexpectedValue = errors.New("unexpected value")
+	ErrUnsupported     = errors.New("unsupported")
 )
 
 type locatedError struct {

@@ -60,6 +60,11 @@ func (n *node) processMappingChildren(children []mappingChild) (*yaml.Node, erro
 
 	switch len(children) {
 	case 0:
+		if n.parent == nil {
+			//nolint:nilnil // Nil is expected when processing empty root node.
+			return nil, nil
+		}
+
 		// No children: pass definitions to parent and return nil.
 		for name, value := range n.definitions {
 			err := n.parent.setDefinition(name, value)

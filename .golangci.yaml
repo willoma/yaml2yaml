@@ -46,5 +46,6 @@ linters:
     varnamelen:
       ignore-decls:
         - i int
+        - j int
         - op token.Token
         - ok bool
