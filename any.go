@@ -38,7 +38,6 @@ func anyToBool(value any) bool {
 	default:
 		return false
 	}
-
 }
 
 func anyToString(value any) string {

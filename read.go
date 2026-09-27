@@ -8,6 +8,7 @@ import (
 )
 
 func readFile(path string) (*yaml.Node, error) {
+	//nolint:gosec // Yes, file inclusion via variable: it's the goal here.
 	src, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading file: %w", err)

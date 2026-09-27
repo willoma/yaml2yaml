@@ -9,7 +9,6 @@ import (
 	"github.com/willoma/yaml2yaml"
 )
 
-//nolint:funlen // It's not THAT long
 func main() {
 	result, err := read()
 	if err != nil {
@@ -45,14 +44,14 @@ func read() ([]byte, error) {
 	}
 
 	return result, nil
-
 }
 
 func write(result []byte) error {
 	if len(os.Args) > 2 {
+		//nolint:gosec // Using the same permissions as os.Create.
 		err := os.WriteFile(os.Args[2], result, 0o666)
 		if err != nil {
-			return fmt.Errorf("writing to %s: %v", os.Args[2], err)
+			return fmt.Errorf("writing to %s: %w", os.Args[2], err)
 		}
 
 		return nil
@@ -60,7 +59,7 @@ func write(result []byte) error {
 
 	_, err := os.Stdout.Write(result)
 	if err != nil {
-		return fmt.Errorf("writing to stdout: %v", err)
+		return fmt.Errorf("writing to stdout: %w", err)
 	}
 
 	return nil

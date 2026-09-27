@@ -33,6 +33,7 @@ func (n *node) processMapping() (*yaml.Node, error) {
 
 			continue
 		}
+
 		keyResult, kErr := key.process()
 		if kErr != nil {
 			errs = append(errs, kErr)
@@ -74,7 +75,10 @@ func (n *node) processMappingChildren(children []mappingChild) (*yaml.Node, erro
 			return children[0].value, nil
 		}
 
-		return &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{children[0].key, children[0].value}}, joinErrors(errs...)
+		return &yaml.Node{
+			Kind:    yaml.MappingNode,
+			Content: []*yaml.Node{children[0].key, children[0].value},
+		}, joinErrors(errs...)
 	}
 
 	if children[0].key == nil {

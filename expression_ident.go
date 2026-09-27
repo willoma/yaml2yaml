@@ -11,6 +11,7 @@ func (n *node) resolveIdent(expr *ast.Ident) (any, error) {
 	default:
 		def := n.getDefinition(expr.Name)
 		if def == nil {
+			//nolint:nilnil // Nil as a value is useful here.
 			return nil, nil
 		}
 
