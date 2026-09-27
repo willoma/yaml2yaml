@@ -11,69 +11,57 @@ import (
 
 //nolint:funlen // It's not THAT long
 func main() {
-	var err error
-
-	closeInput := false
-	inputName := "input"
-	input := os.Stdin
-
-	if len(os.Args) > 1 {
-		inputName = os.Args[1]
-
-		//nolint:gosec // Input name is provided by the user, do as they say.
-		input, err = os.Open(inputName)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Opening %s: %v\n", inputName, err)
-			os.Exit(1)
-		}
-
-		closeInput = true
-	}
-
-	data, err := io.ReadAll(input)
-
-	if closeInput {
-		if err := input.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "Closing %s: %v\n", inputName, err)
-		}
-	}
-
+	result, err := read()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Reading %s: %v\n", inputName, err)
+		fmt.Fprintf(os.Stderr, "Error %v\n", err)
 		os.Exit(1)
 	}
 
-	result, err := yaml2yaml.Bytes(data)
+	err = write(result)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Converting %s:\n%v\n", inputName, err)
+		fmt.Fprintf(os.Stderr, "Error %v\n", err)
+		os.Exit(1)
 	}
+}
 
-	closeOutput := false
-	outputName := "output"
-	output := os.Stdout
-
-	if len(os.Args) > 2 {
-		outputName = os.Args[2]
-
-		//nolint:gosec // Input name is provided by the user, do as they say.
-		output, err = os.Create(os.Args[2])
+func read() ([]byte, error) {
+	if len(os.Args) > 1 {
+		result, err := yaml2yaml.ProcessFile(os.Args[1])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Creating %s: %v\n", outputName, err)
-			os.Exit(1)
+			return nil, fmt.Errorf("converting %s: %w", os.Args[1], err)
 		}
 
-		closeOutput = true
+		return result, nil
 	}
 
-	_, err = output.Write(result)
-
-	if closeOutput {
-		if err := output.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "Closing %s: %v\n", outputName, err)
-		}
-	}
-
+	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Writing to %s: %v\n", outputName, err)
+		return nil, fmt.Errorf("reading stdin: %w", err)
 	}
+
+	result, err := yaml2yaml.ProcessBytes(data)
+	if err != nil {
+		return nil, fmt.Errorf("converting stdin: %w", err)
+	}
+
+	return result, nil
+
+}
+
+func write(result []byte) error {
+	if len(os.Args) > 2 {
+		err := os.WriteFile(os.Args[2], result, 0o666)
+		if err != nil {
+			return fmt.Errorf("writing to %s: %v", os.Args[2], err)
+		}
+
+		return nil
+	}
+
+	_, err := os.Stdout.Write(result)
+	if err != nil {
+		return fmt.Errorf("writing to stdout: %v", err)
+	}
+
+	return nil
 }

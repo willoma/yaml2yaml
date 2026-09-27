@@ -17,11 +17,11 @@ const (
 var _ = Describe("Example file", func() {
 	It("transforms the example file as expected", func() {
 		source, err := os.ReadFile(exampleFile)
-		Expect(err).ToNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		result, err := os.ReadFile(exampleResultFile)
-		Expect(err).ToNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
-		Expect(yaml2yaml.Bytes(source)).To(Equal(result))
+		Expect(yaml2yaml.ProcessBytes(source)).To(Equal(result))
 	})
 })

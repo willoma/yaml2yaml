@@ -9,8 +9,8 @@ import (
 
 const indentSize = 2
 
-// Bytes converts a YAML byte slice to a YAML byte slice, with any processing applied.
-func Bytes(src []byte) ([]byte, error) {
+// ProcessBytes converts a YAML byte slice to a YAML byte slice, with any processing applied.
+func ProcessBytes(src []byte) ([]byte, error) {
 	var node yaml.Node
 
 	if err := yaml.Unmarshal(src, &node); err != nil {
@@ -18,6 +18,23 @@ func Bytes(src []byte) ([]byte, error) {
 	}
 
 	parsed, pErr := Process(&node)
+
+	result, err := yaml.Dump(parsed, yaml.WithIndent(indentSize))
+	if err != nil {
+		return nil, joinErrors(pErr, fmt.Errorf("converting data to YAML: %w", err))
+	}
+
+	return result, pErr
+}
+
+// ProcessFile reads a YAML file from the given path and returns the processed YAML byte slice.
+func ProcessFile(path string) ([]byte, error) {
+	node, err := readFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	parsed, pErr := Process(node)
 
 	result, err := yaml.Dump(parsed, yaml.WithIndent(indentSize))
 	if err != nil {
