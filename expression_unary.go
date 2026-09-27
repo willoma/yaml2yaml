@@ -13,12 +13,7 @@ func (n *node) resolveUnaryExpr(expr *ast.UnaryExpr) (any, error) {
 
 	switch expr.Op {
 	case token.NOT:
-		bVal, ok := value.(bool)
-		if !ok {
-			return false, errors.Join(vErr, ErrNotBoolean)
-		}
-
-		return !bVal, nil
+		return !anyToBool(value), nil
 	default:
 		return nil, errors.Join(vErr, fmt.Errorf("operator %q %w", expr.Op.String(), ErrUnsupported))
 	}
