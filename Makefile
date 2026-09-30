@@ -1,3 +1,4 @@
+# Also update the version in .github/workflows/lint.yml
 GOLANGCILINT_VERSION=2.14.0
 
 build: dist/yaml2yaml
