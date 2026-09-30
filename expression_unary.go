@@ -5,16 +5,24 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/willoma/yaml2yaml/convert"
+	"github.com/willoma/yaml2yaml/definitions"
 	"github.com/willoma/yaml2yaml/errors"
 )
 
-func (n *node) resolveUnaryExpr(expr *ast.UnaryExpr) (any, error) {
-	value, vErr := n.resolveExpr(expr.X)
+func resolveUnaryExpr(defs *definitions.Definitions, expr *ast.UnaryExpr) (any, error) {
+	errs := errors.Multi()
+
+	value, err := resolveExpr(defs, expr.X)
+
+	errs.Add(err)
 
 	switch expr.Op {
 	case token.NOT:
-		return !anyToBool(value), nil
+		return !convert.AnyToBool(value), errs
 	default:
-		return nil, errors.Join(vErr, fmt.Errorf("operator %q %w", expr.Op.String(), ErrUnsupported))
+		errs.Add(fmt.Errorf("%q: %w in unary expression", expr.Op.String(), errors.ErrUnsupportedOperator))
+
+		return nil, errs
 	}
 }

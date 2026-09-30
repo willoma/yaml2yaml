@@ -1,15 +1,22 @@
 package yaml2yaml
 
-import "github.com/willoma/yaml2yaml/errors"
+import (
+	"go.yaml.in/yaml/v4"
 
-func (n *node) defineMapping(key, value *node) ([]mappingChild, error) {
-	keyValue, kErr := key.evaluateValue()
-	name := anyToString(keyValue)
+	"github.com/willoma/yaml2yaml/definitions"
+	"github.com/willoma/yaml2yaml/errors"
+)
 
-	dErr := n.definitions.Set(name, value.Node)
-	if dErr != nil {
-		dErr = key.locatedError(dErr)
-	}
+func doDirDefine(defs *definitions.Definitions, key, value *yaml.Node) error {
+	errs := errors.Multi()
 
-	return nil, errors.Join(kErr, dErr)
+	name, err := evaluateString(defs, key)
+
+	errs.Add(err)
+
+	err = defs.Set(name, value)
+
+	errs.Add(err)
+
+	return errs
 }

@@ -5,37 +5,35 @@ import (
 
 	"go.yaml.in/yaml/v4"
 
+	"github.com/willoma/yaml2yaml/definitions"
 	"github.com/willoma/yaml2yaml/errors"
 )
 
-func (n *node) applyMapping(key, value *node) ([]mappingChild, error) {
-	keyValue, kErr := key.evaluateValue()
-	name := anyToString(keyValue)
+func doDirApply(defs *definitions.Definitions, key, value *yaml.Node) (*yaml.Node, error) {
+	errs := errors.Multi()
 
-	node := n.definitions.Get(name)
-	if node == nil {
-		return nil, errors.Join(kErr, fmt.Errorf("%q is %w", name, ErrNotDefined))
+	name, err := evaluateString(defs, key)
+
+	errs.Add(err)
+
+	defNode := defs.Get(name)
+	if defNode == nil {
+		errs.Add(fmt.Errorf("%q: %w", name, errors.ErrNotDefined))
+
+		return nil, errs
 	}
 
-	resultValue := n.keyedChild(key.Tag, key.Value, node)
-	aErr := resultValue.definitions.SetFromNode(value.Node)
-
-	processedResultValue, vErr := resultValue.process()
-	result, cErr := nodeToMappingChild(key.path, processedResultValue)
-
-	return result, errors.Join(kErr, aErr, vErr, cErr)
-}
-
-func (n *node) applyScalar() (*yaml.Node, error) {
-	value, eErr := n.evaluateValue()
-	name := anyToString(value)
-
-	node := n.definitions.Get(name)
-	if node == nil {
-		return anyToNode(n.Node, value), n.locatedError(fmt.Errorf("%q is %w", name, ErrNotDefined))
+	var childDefs *definitions.Definitions
+	if value == nil {
+		childDefs = defs.Sibling()
+	} else {
+		childDefs = defs.Child()
+		errs.Add(childDefs.SetFromNode(value))
 	}
 
-	result, err := n.sameLevel(node).process()
+	result, err := processTransparent(childDefs, defNode)
 
-	return result, errors.Join(eErr, err)
+	errs.Add(err)
+
+	return result, errs
 }

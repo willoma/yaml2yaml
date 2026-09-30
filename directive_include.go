@@ -1,107 +1,84 @@
 package yaml2yaml
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"go.yaml.in/yaml/v4"
 
+	"github.com/willoma/yaml2yaml/convert"
+	"github.com/willoma/yaml2yaml/definitions"
 	"github.com/willoma/yaml2yaml/errors"
 )
 
-func (n *node) includeMapping(key, value *node) ([]mappingChild, error) {
-	keyValue, kErr := key.evaluateValue()
-	if kErr != nil {
-		kErr = n.locatedError(kErr)
-	}
+func doDirInclude(defs *definitions.Definitions, key, value *yaml.Node) (*yaml.Node, error) {
+	errs := errors.Multi()
 
-	path := anyToString(keyValue)
+	filePath, err := evaluateString(defs, key)
 
-	includedValue, rErr := n.readInclude(path)
-	if rErr != nil {
-		rErr = n.locatedError(rErr)
-	}
+	errs.Add(err)
 
-	result, cErr := nodeToMappingChild(key.path, includedValue)
-	if cErr != nil {
-		cErr = n.locatedError(cErr)
-	}
-
-	var vErr error
-	if value != nil && value.Tag != "!!null" {
-		vErr = n.locatedError(fmt.Errorf("%w on include", ErrUnexpectedValue))
-	}
-
-	return result, errors.Join(kErr, rErr, cErr, vErr)
-}
-
-func (n *node) includeScalar() (*yaml.Node, error) {
-	value, eErr := n.evaluateValue()
-	path := anyToString(value)
-	includedValue, rErr := n.readInclude(path)
-
-	return includedValue, errors.Join(eErr, rErr)
-}
-
-func (n *node) readInclude(path string) (*yaml.Node, error) {
-	stat, err := os.Stat(path)
+	stat, err := os.Stat(filePath)
 	if err != nil {
-		return nil, n.locatedError(err)
+		errs.Add(err)
+
+		return nil, errs
 	}
+
+	var result *yaml.Node
 
 	if stat.IsDir() {
-		return n.readDirIncludes(path)
+		result, err = readDirIncludes(defs, filePath)
+	} else {
+		result, err = readFileInclude(defs, filePath)
 	}
 
-	return n.readFileInclude(path)
+	errs.Add(err)
+
+	if value != nil && value.Tag != "!!null" {
+		errs.Add(errors.ErrUnexpectedValue)
+	}
+
+	return result, errs
 }
 
-func (n *node) readDirIncludes(path string) (*yaml.Node, error) {
+func readDirIncludes(defs *definitions.Definitions, path string) (*yaml.Node, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
-		return nil, n.locatedError(err)
+		//nolint:wrapcheck // Original error is OK.
+		return nil, err
 	}
 
-	var (
-		result *yaml.Node
-		errs   []error
-	)
+	var result *yaml.Node
+
+	errs := errors.Multi()
 
 	for _, entry := range entries {
-		var (
-			value *yaml.Node
-			err   error
-		)
+		var value *yaml.Node
 
 		entryPath := filepath.Join(path, entry.Name())
 
 		if entry.IsDir() {
-			value, err = n.readDirIncludes(entryPath)
+			value, err = readDirIncludes(defs, entryPath)
 		} else {
-			value, err = n.readFileInclude(entryPath)
+			value, err = readFileInclude(defs, entryPath)
 		}
 
-		if err != nil {
-			errs = append(errs, err)
-		}
+		errs.Add(err)
 
-		if value != nil {
-			result, err = mergeNodes(result, value)
-			if err != nil {
-				errs = append(errs, n.locatedError(err))
-			}
-		}
+		result, err = convert.MergeNodes(result, value)
+
+		errs.Add(err)
 	}
 
-	return result, errors.Join(errs...)
+	return result, errs
 }
 
-func (n *node) readFileInclude(path string) (*yaml.Node, error) {
+func readFileInclude(defs *definitions.Definitions, path string) (*yaml.Node, error) {
 	node, err := readFile(path)
 	if err != nil {
-		return nil, n.locatedError(err)
+		return nil, err
 	}
 
-	return n.fileChild(path, node).process()
+	return process(defs.Child(), "("+path+")", node)
 }

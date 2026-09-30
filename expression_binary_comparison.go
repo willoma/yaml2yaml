@@ -56,6 +56,7 @@ func resolveBoolsComparison(left, right bool, op token.Token) bool {
 		return false
 	}
 }
+
 func resolveIntComparison(left int, right any, op token.Token) bool {
 	switch right := right.(type) {
 	case bool:

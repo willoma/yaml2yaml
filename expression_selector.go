@@ -4,23 +4,28 @@ import (
 	"fmt"
 	"go/ast"
 
+	"github.com/willoma/yaml2yaml/definitions"
 	"github.com/willoma/yaml2yaml/errors"
 )
 
-func (n *node) resolveSelectorExpr(expr *ast.SelectorExpr) (any, error) {
-	var sErr error
+func resolveSelectorExpr(defs *definitions.Definitions, expr *ast.SelectorExpr) (any, error) {
+	errs := errors.Multi()
 	if expr.Sel == nil {
-		sErr = fmt.Errorf("%w: selector expression is empty", ErrInvalid)
+		errs.Add(errors.ErrEmptySelector)
 	}
 
-	x, xErr := n.resolveExpr(expr.X)
-	if xErr != nil {
-		return nil, errors.Join(sErr, xErr)
+	value, err := resolveExpr(defs, expr.X)
+	if err != nil {
+		errs.Add(err)
+
+		return nil, errs
 	}
 
-	xMap, ok := x.(map[string]any)
+	xMap, ok := value.(map[string]any)
 	if !ok {
-		return nil, errors.Join(sErr, fmt.Errorf("left: %w", ErrNotMapping))
+		errs.Add(fmt.Errorf("left: %w", errors.ErrNotAMapping))
+
+		return nil, errs
 	}
 
 	return xMap[expr.Sel.Name], nil

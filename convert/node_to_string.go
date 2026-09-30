@@ -1,4 +1,4 @@
-package node
+package convert
 
 import (
 	"strings"
@@ -6,29 +6,31 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func ToString(node *yaml.Node) string {
+// NodeToString converts a YAML node to a string.
+// It does not return errors on [yaml.StreamNode] or default kinds,
+// because it runs on processed YAML nodes only
+// (ie. those kinds have already been excluded).
+func NodeToString(node *yaml.Node) string {
 	switch node.Kind {
 	case yaml.DocumentNode:
-		return ToString(node.Content[0])
+		return NodeToString(node.Content[0])
 	case yaml.AliasNode:
-		return ToString(node.Alias)
+		return NodeToString(node.Alias)
 	case yaml.SequenceNode:
 		return sequenceToString(node)
 	case yaml.MappingNode:
 		return mappingToString(node)
 	case yaml.ScalarNode:
 		return scalarToString(node)
-	case yaml.StreamNode:
-		return "stream"
 	default:
-		return "unknown"
+		return ""
 	}
 }
 
 func sequenceToString(node *yaml.Node) string {
 	content := make([]string, len(node.Content))
 	for i, item := range node.Content {
-		content[i] = ToString(item)
+		content[i] = NodeToString(item)
 	}
 
 	return "[" + strings.Join(content, ",") + "]"
@@ -37,7 +39,7 @@ func sequenceToString(node *yaml.Node) string {
 func mappingToString(node *yaml.Node) string {
 	content := make([]string, len(node.Content)/2)
 	for i := 0; i < len(node.Content); i += 2 {
-		content[i/2] = ToString(node.Content[i]) + ":" + ToString(node.Content[i+1])
+		content[i/2] = NodeToString(node.Content[i]) + ":" + NodeToString(node.Content[i+1])
 	}
 
 	return "{" + strings.Join(content, ",") + "}"

@@ -49,3 +49,35 @@ linters:
         - j int
         - op token.Token
         - ok bool
+    wrapcheck:
+      extra-ignore-sigs:
+        - .PassToParent(
+        - errors.Locate(
+
+formatters:
+  enable:
+    - gci
+    - gofumpt
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule
+    gofumpt:
+      extra:
+        clothe-returns: true
+        balance-calls: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: false
+
+output:
+  formats:
+    text:
+      colors: true
+
+run:
+  timeout: 10m

@@ -1,16 +1,27 @@
 package yaml2yaml
 
-import "github.com/willoma/yaml2yaml/errors"
+import (
+	"go.yaml.in/yaml/v4"
 
-func (n *node) ifMapping(key, value *node) ([]mappingChild, error) {
-	expr, eErr := key.resolveExpression(key.Value)
+	"github.com/willoma/yaml2yaml/convert"
+	"github.com/willoma/yaml2yaml/definitions"
+	"github.com/willoma/yaml2yaml/errors"
+)
 
-	if !anyToBool(expr) {
-		return nil, eErr
+func doDirIf(defs *definitions.Definitions, key, value *yaml.Node) (*yaml.Node, error) {
+	expr, err := resolveExpression(defs, key.Value)
+
+	if !convert.AnyToBool(expr) {
+		return nil, err
 	}
 
-	resultValue, vErr := value.process()
-	result, cErr := nodeToMappingChild(key.path, resultValue)
+	errs := errors.Multi()
 
-	return result, errors.Join(eErr, vErr, cErr)
+	errs.Add(err)
+
+	result, err := processTransparent(defs, value)
+
+	errs.Add(err)
+
+	return result, errs
 }

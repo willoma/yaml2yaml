@@ -1,14 +1,13 @@
 package yaml2yaml
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"strconv"
 )
 
 //nolint:wrapcheck // Original errors are ok.
-func (n *node) resolveBasicLit(expr *ast.BasicLit) (any, error) {
+func resolveBasicLit(expr *ast.BasicLit) (any, error) {
 	switch expr.Kind {
 	case token.INT:
 		return strconv.Atoi(expr.Value)
@@ -21,6 +20,7 @@ func (n *node) resolveBasicLit(expr *ast.BasicLit) (any, error) {
 	case token.STRING:
 		return strconv.Unquote(expr.Value)
 	default:
-		return nil, fmt.Errorf("basic literal kind %s %w", expr.Kind.String(), ErrUnsupported)
+		//nolint:nilnil // This will never happen, but we need to return something.
+		return nil, nil
 	}
 }

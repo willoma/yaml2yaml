@@ -4,96 +4,94 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+
+	"github.com/willoma/yaml2yaml/definitions"
+	"github.com/willoma/yaml2yaml/errors"
 )
 
-func (n *node) resolveExpression(src string) (any, error) {
+func resolveExpression(defs *definitions.Definitions, src string) (any, error) {
 	expr, err := parser.ParseExpr(src)
 	if err != nil {
-		return nil, n.locatedError(fmt.Errorf("parsing: %w", err))
+		return nil, fmt.Errorf("parsing: %w", err)
 	}
 
-	result, err := n.resolveExpr(expr)
-	if err != nil {
-		err = n.locatedError(err)
-	}
-
-	return result, err
+	return resolveExpr(defs, expr)
 }
 
 //nolint:funlen // Exhaustive switch on expression types.
-func (n *node) resolveExpr(expr ast.Expr) (any, error) {
+func resolveExpr(defs *definitions.Definitions, expr ast.Expr) (any, error) {
 	// These are all the possible expression types, according to go/ast/ast.go.
 	switch expr := expr.(type) {
 	case *ast.BadExpr:
-		return nil, ErrSyntaxError
+		return nil, errors.ErrSyntaxError
 
 	case *ast.Ident:
-		return n.resolveIdent(expr)
+		return resolveIdent(defs, expr)
 
 	case *ast.Ellipsis:
-		return nil, fmt.Errorf("ellipsis are %w", ErrUnsupported)
+		return nil, fmt.Errorf("ellipsis: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.BasicLit:
-		return n.resolveBasicLit(expr)
+		return resolveBasicLit(expr)
 
 	case *ast.FuncLit:
-		return nil, fmt.Errorf("functions are %w", ErrUnsupported)
+		return nil, fmt.Errorf("function: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.CompositeLit:
-		return nil, fmt.Errorf("composites are %w", ErrUnsupported)
+		return nil, fmt.Errorf("composite: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.ParenExpr:
-		return n.resolveExpr(expr.X)
+		return resolveExpr(defs, expr.X)
 
 	case *ast.SelectorExpr:
-		return n.resolveSelectorExpr(expr)
+		return resolveSelectorExpr(defs, expr)
 
 	case *ast.IndexExpr:
-		return nil, fmt.Errorf("index expressions %w", ErrNotImplemented)
+		return nil, fmt.Errorf("index expressions %w", errors.ErrNotImplemented)
 
 	case *ast.IndexListExpr:
-		return nil, fmt.Errorf("index list expressions %w", ErrNotImplemented)
+		return nil, fmt.Errorf("index list expressions %w", errors.ErrNotImplemented)
 
 	case *ast.SliceExpr:
-		return nil, fmt.Errorf("slice expressions %w", ErrNotImplemented)
+		return nil, fmt.Errorf("slice expressions %w", errors.ErrNotImplemented)
 
 	case *ast.TypeAssertExpr:
-		return nil, fmt.Errorf("type assertions %w", ErrNotImplemented)
+		return nil, fmt.Errorf("type assertions %w", errors.ErrNotImplemented)
 
 	case *ast.CallExpr:
-		return nil, fmt.Errorf("functions are %w", ErrUnsupported)
+		return nil, fmt.Errorf("function: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.StarExpr:
-		return nil, fmt.Errorf("pointers are %w", ErrUnsupported)
+		return nil, fmt.Errorf("pointer: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.UnaryExpr:
-		return n.resolveUnaryExpr(expr)
+		return resolveUnaryExpr(defs, expr)
 
 	case *ast.BinaryExpr:
-		return n.resolveBinaryExpr(expr)
+		return resolveBinaryExpr(defs, expr)
 
 	case *ast.KeyValueExpr:
-		return nil, fmt.Errorf("key-value pairs are %w", ErrUnsupported)
+		return nil, fmt.Errorf("key-value pair: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.ArrayType:
-		return nil, fmt.Errorf("arrays are %w", ErrUnsupported)
+		return nil, fmt.Errorf("array: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.StructType:
-		return nil, fmt.Errorf("structs are %w", ErrUnsupported)
+		return nil, fmt.Errorf("struct: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.FuncType:
-		return nil, fmt.Errorf("functions are %w", ErrUnsupported)
+		return nil, fmt.Errorf("function: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.InterfaceType:
-		return nil, fmt.Errorf("interfaces are %w", ErrUnsupported)
+		return nil, fmt.Errorf("interface: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.MapType:
-		return nil, fmt.Errorf("maps are %w", ErrUnsupported)
+		return nil, fmt.Errorf("map: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.ChanType:
-		return nil, fmt.Errorf("chans are %w", ErrUnsupported)
+		return nil, fmt.Errorf("chan: %w", errors.ErrUnsupportedExpression)
 
 	default:
-		return nil, fmt.Errorf("%w expression type %T", ErrInvalid, expr)
+		return nil, fmt.Errorf("%w type %T", errors.ErrInvalidExpression, expr)
 	}
 }

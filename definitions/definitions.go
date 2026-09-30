@@ -5,12 +5,8 @@ import (
 
 	"go.yaml.in/yaml/v4"
 
+	"github.com/willoma/yaml2yaml/convert"
 	"github.com/willoma/yaml2yaml/errors"
-	"github.com/willoma/yaml2yaml/node"
-)
-
-var (
-	ErrAlreadyDefined = fmt.Errorf("already defined")
 )
 
 type Definitions struct {
@@ -47,20 +43,13 @@ func (d *Definitions) PassToParent() error {
 		return nil
 	}
 
-	var errs []error
+	errs := errors.Multi()
 
 	for name, value := range d.definitions {
-		err := d.parent.Set(name, value)
-		if err != nil {
-			errs = append(errs, err)
-		}
+		errs.Add(d.parent.Set(name, value))
 	}
 
-	if len(errs) == 0 {
-		return nil
-	}
-
-	return errors.Join(errs...)
+	return errs
 }
 
 // Get returns the value of the definition with the given name, if any.
@@ -80,7 +69,7 @@ func (d *Definitions) Get(name string) *yaml.Node {
 // Set sets the value of the definition with the given name.
 func (d *Definitions) Set(name string, value *yaml.Node) error {
 	if d.definitions[name] != nil {
-		return fmt.Errorf("%q %w", name, ErrAlreadyDefined)
+		return fmt.Errorf("%q %w", name, errors.ErrAlreadyDefined)
 	}
 
 	d.definitions[name] = value
@@ -94,14 +83,14 @@ func (d *Definitions) SetFromNode(value *yaml.Node) error {
 		return d.Set("_", value)
 	}
 
-	var errs []error
+	errs := errors.Multi()
 
 	for i := 0; i < len(value.Content); i += 2 {
-		key := node.ToString(value.Content[i])
-		if err := d.Set(key, value.Content[i+1]); err != nil {
-			errs = append(errs, err)
-		}
+		errs.Add(d.Set(
+			convert.NodeToString(value.Content[i]),
+			value.Content[i+1],
+		))
 	}
 
-	return errors.Join(errs...)
+	return errs
 }
