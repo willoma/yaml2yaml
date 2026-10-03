@@ -2,6 +2,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -10,24 +11,31 @@ import (
 )
 
 func main() {
-	result, err := read()
+	input := flag.String("input", "", "Input file path (defaults to stdin)")
+	output := flag.String("output", "", "Output file path (defaults to stdin)")
+
+	flag.StringVar(input, "i", "", "Input file path (shorthand)")
+	flag.StringVar(output, "o", "", "Output file path (shorthand)")
+	flag.Parse()
+
+	result, err := read(*input)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error %v\n", err)
 		os.Exit(1)
 	}
 
-	err = write(result)
+	err = write(*output, result)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func read() ([]byte, error) {
-	if len(os.Args) > 1 {
-		result, err := yaml2yaml.ProcessFile(os.Args[1])
+func read(input string) ([]byte, error) {
+	if input != "" {
+		result, err := yaml2yaml.ProcessFile(input)
 		if err != nil {
-			return nil, fmt.Errorf("converting %s: %w", os.Args[1], err)
+			return nil, fmt.Errorf("converting %s:\n%w", input, err)
 		}
 
 		return result, nil
@@ -46,12 +54,12 @@ func read() ([]byte, error) {
 	return result, nil
 }
 
-func write(result []byte) error {
-	if len(os.Args) > 2 {
+func write(output string, result []byte) error {
+	if output != "" {
 		//nolint:gosec // Using the same permissions as os.Create.
-		err := os.WriteFile(os.Args[2], result, 0o666)
+		err := os.WriteFile(output, result, 0o666)
 		if err != nil {
-			return fmt.Errorf("writing to %s: %w", os.Args[2], err)
+			return fmt.Errorf("writing to %s: %w", output, err)
 		}
 
 		return nil

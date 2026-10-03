@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	exampleFile       = "example.yaml"
-	exampleResultFile = "example.result.yaml"
+	exampleFile       = "example/full.yaml"
+	exampleResultFile = "example/full.result.yaml"
 )
 
 var _ = Describe("Example file", func() {

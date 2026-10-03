@@ -2,79 +2,69 @@
 package yaml2yaml
 
 import (
-	oerrors "errors"
 	"fmt"
+	"path/filepath"
 
 	"go.yaml.in/yaml/v4"
 
-	"github.com/willoma/yaml2yaml/definitions"
-	"github.com/willoma/yaml2yaml/errors"
+	"github.com/willoma/yaml2yaml/internal/errors"
+	"github.com/willoma/yaml2yaml/internal/node"
+	"github.com/willoma/yaml2yaml/internal/read"
 )
 
 const indentSize = 2
 
 // ProcessBytes converts a YAML byte slice to a YAML byte slice, with any processing applied.
 func ProcessBytes(src []byte) ([]byte, error) {
-	var node yaml.Node
+	var srcNode yaml.Node
 
-	if err := yaml.Unmarshal(src, &node); err != nil {
+	if err := yaml.Unmarshal(src, &srcNode); err != nil {
 		return nil, fmt.Errorf("reading data as YAML: %w", err)
 	}
 
-	parsed, pErr := Process(&node)
-
-	result, err := yaml.Dump(parsed, yaml.WithIndent(indentSize))
-	if err != nil {
-		return nil, oerrors.Join(pErr, fmt.Errorf("converting data to YAML: %w", err))
-	}
-
-	return result, pErr
+	return processToBytes("", &srcNode)
 }
 
 // ProcessFile reads a YAML file from the given path and returns the processed YAML byte slice.
 func ProcessFile(path string) ([]byte, error) {
-	node, err := readFile(path)
+	src, err := read.File(path)
 	if err != nil {
 		return nil, err
 	}
 
-	parsed, pErr := Process(node)
+	return processToBytes(filepath.Dir(path), src)
+}
+
+func processToBytes(basePath string, src *yaml.Node) ([]byte, error) {
+	var errs []error
+
+	parsed, err := Process(basePath, src)
+	if err != nil {
+		errs = append(errs, err)
+	}
 
 	result, err := yaml.Dump(parsed, yaml.WithIndent(indentSize))
 	if err != nil {
-		return nil, oerrors.Join(pErr, fmt.Errorf("converting data to YAML: %w", err))
+		errs = append(errs, fmt.Errorf("converting data to YAML: %w", err))
 	}
 
-	return result, pErr
+	return result, errors.Join(errs...)
 }
 
 // Process applies any processing to a YAML node, returning the processed node and any errors.
-func Process(node *yaml.Node) (*yaml.Node, error) {
-	return process(definitions.New(), "", node)
-}
+func Process(basePath string, src *yaml.Node) (*yaml.Node, error) {
+	var errs []error
 
-func process(defs *definitions.Definitions, key string, node *yaml.Node) (*yaml.Node, error) {
-	result, err := processTransparent(defs, node)
+	sourceNode := parseNode(basePath, src)
 
-	return result, errors.Locate(key, node.Line, node.Column, err)
-}
-
-// processTransparent processees a node, but does not locate the returned error..
-func processTransparent(defs *definitions.Definitions, node *yaml.Node) (*yaml.Node, error) {
-	switch node.Kind {
-	case yaml.DocumentNode:
-		return processTransparent(defs, node.Content[0])
-	case yaml.AliasNode:
-		return process(defs, "alias:"+node.Alias.Anchor, node.Alias)
-	case yaml.SequenceNode:
-		return processSequence(defs, node)
-	case yaml.MappingNode:
-		return processMapping(defs, node)
-	case yaml.ScalarNode:
-		return processScalar(defs, node)
-	case yaml.StreamNode:
-		return nil, errors.ErrStreamNotSupported
-	default:
-		return nil, errors.ErrUnknownKind
+	if sourceNode == nil {
+		return nil, errors.ErrEmptyNode
 	}
+
+	processed, err := sourceNode.Process(node.NewDefinitions())
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	return processed.ToYAML(), errors.Join(errs...)
 }

@@ -3,6 +3,8 @@ GOLANGCILINT_VERSION=2.14.0
 
 build: dist/yaml2yaml
 
+check: lint test vulncheck
+
 lint: dist/golangci-lint
 	dist/golangci-lint run
 
@@ -11,6 +13,9 @@ lintfix: dist/golangci-lint
 
 test:
 	go tool ginkgo
+
+vulncheck:
+	go tool govulncheck ./...
 
 dist/golangci-lint:
 	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b dist v$(GOLANGCILINT_VERSION)

@@ -36,6 +36,17 @@ linters:
     gosec:
       excludes:
         - G104 # We already have errcheck
+    ireturn:
+      allow:
+        # Defaults
+        - anon
+        - error
+        - empty
+        - stdlib
+        # Specific
+        - github.com/willoma/yaml2yaml/internal/node.Definitions
+        - github.com/willoma/yaml2yaml/internal/node.Node
+        - github.com/willoma/yaml2yaml/internal/node.Source
     revive:
       rules:
         - name: dot-imports
@@ -50,9 +61,8 @@ linters:
         - op token.Token
         - ok bool
     wrapcheck:
-      extra-ignore-sigs:
-        - .PassToParent(
-        - errors.Locate(
+      ignore-package-globs:
+        - github.com/willoma/yaml2yaml/internal/*
 
 formatters:
   enable:
