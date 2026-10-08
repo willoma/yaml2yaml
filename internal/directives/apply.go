@@ -1,48 +1,45 @@
 package directives
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/willoma/yaml2yaml/internal/errors"
+	yerrors "github.com/willoma/yaml2yaml/internal/errors"
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
 const NameApply = "!apply"
 
-type Apply struct {
-	Name node.Source
-	Args node.Source
+type dirApply struct {
+	name node.Source
+	args node.Source
 }
 
-func (a *Apply) Process(defs node.Definitions) (node.Node, error) {
-	var errs []error
+func Apply(name, args node.Source) *dirApply {
+	return &dirApply{name: name, args: args}
+}
 
-	nameNode, err := a.Name.Process(defs)
+func (a *dirApply) Process(defs node.Definitions) (node.Node, error) {
+	nameNode, err := a.name.Process(defs)
 	if err != nil {
-		errs = append(errs, err)
+		return nil, fmt.Errorf("name: %w", err)
 	}
 
-	name := nameNode.String()
-
-	def := defs.Get(name)
+	def := defs.Get(nameNode.String())
 	if def == nil {
-		err := fmt.Errorf("%q %w", name, errors.ErrNotDefined)
-
-		errs = append(errs, err)
-
-		return nil, errors.Join(errs...)
+		return nil, yerrors.ErrNotDefined
 	}
 
-	childDefs := defsWithArgs(defs, a.Args)
+	childDefs := defsWithArgs(defs, a.args)
 
 	result, err := def.Process(childDefs)
 	if err != nil {
-		errs = append(errs, err)
+		if errors.Is(err, yerrors.ErrEmpty) {
+			childDefs.passToParent()
+		}
+
+		return nil, err
 	}
 
-	if result == nil {
-		childDefs.passToParent()
-	}
-
-	return result, errors.Join(errs...)
+	return result, nil
 }

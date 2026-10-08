@@ -1,11 +1,10 @@
 package node
 
 import (
+	"errors"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
-
-	"github.com/willoma/yaml2yaml/internal/errors"
 )
 
 type (
@@ -21,6 +20,7 @@ func (s SequenceSource) Process(defs Definitions) (Node, error) {
 	for _, item := range s {
 		processed, err := item.Process(defs)
 		if err != nil {
+			// TODO Locate error
 			errs = append(errs, err)
 		}
 

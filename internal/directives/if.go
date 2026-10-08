@@ -1,6 +1,8 @@
 package directives
 
 import (
+	"fmt"
+
 	"github.com/willoma/yaml2yaml/internal/errors"
 	"github.com/willoma/yaml2yaml/internal/expressions"
 	"github.com/willoma/yaml2yaml/internal/node"
@@ -8,25 +10,34 @@ import (
 
 const NameIf = "!if"
 
-type If struct {
-	Condition node.Source
-	Value     node.Source
+type dirIf struct {
+	condition *expressions.Source
+	value     node.Source
 }
 
-func (i *If) Process(defs node.Definitions) (node.Node, error) {
-	condSource, cErr := i.Condition.Process(defs)
-
-	condStr := condSource.String()
-
-	exprNode := expressions.Source(condStr)
-
-	cond, eErr := exprNode.Process(defs)
-
-	if ok, _ := cond.Bool(); !ok {
-		return nil, errors.Join(cErr, eErr)
+func If(condition, value node.Source) (node.Source, error) {
+	cond, ok := condition.(node.String)
+	if !ok {
+		return nil, fmt.Errorf("condition: %w", errors.ErrInvalidExpression)
 	}
 
-	result, pErr := i.Value.Process(defs)
+	expr, err := expressions.Parse(cond.String())
+	if err != nil {
+		return nil, fmt.Errorf("condition: %w", err)
+	}
 
-	return result, errors.Join(cErr, eErr, pErr)
+	return &dirIf{condition: expr, value: value}, nil
+}
+
+func (i *dirIf) Process(defs node.Definitions) (node.Node, error) {
+	cond, err := i.condition.Process(defs)
+	if err != nil {
+		return nil, fmt.Errorf("condition: %w", err)
+	}
+
+	if ok, _ := cond.Bool(); !ok {
+		return nil, errors.ErrEmpty
+	}
+
+	return i.value.Process(defs)
 }

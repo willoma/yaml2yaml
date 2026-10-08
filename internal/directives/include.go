@@ -1,49 +1,60 @@
 package directives
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"go.yaml.in/yaml/v4"
 
-	"github.com/willoma/yaml2yaml/internal/errors"
+	yerrors "github.com/willoma/yaml2yaml/internal/errors"
 	"github.com/willoma/yaml2yaml/internal/node"
 	"github.com/willoma/yaml2yaml/internal/read"
 )
 
 const NameInclude = "!include"
 
-type Include struct {
-	BasePath  string
-	Path      node.Source
-	ParseNode func(basePath string, src *yaml.Node) node.Source
+type (
+	ParseNode func(basePath string, src *yaml.Node) (node.Source, error)
+
+	dirInclude struct {
+		basePath  string
+		path      node.Source
+		parseNode ParseNode
+	}
+)
+
+func Include(basePath string, path node.Source, parseNode ParseNode) *dirInclude {
+	return &dirInclude{basePath: basePath, path: path, parseNode: parseNode}
 }
 
-func (i *Include) Process(defs node.Definitions) (node.Node, error) {
-	pathNode, pErr := i.Path.Process(defs)
-
-	path := filepath.Join(i.BasePath, pathNode.String())
-
-	stat, sErr := os.Stat(path)
-	if sErr != nil {
-		return nil, errors.Join(pErr, sErr)
+func (i *dirInclude) Process(defs node.Definitions) (node.Node, error) {
+	pathNode, err := i.path.Process(defs)
+	if err != nil {
+		return nil, fmt.Errorf("path: %w", err)
 	}
 
-	var (
-		result node.Node
-		rErr   error
-	)
+	path := pathNode.String()
+
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(i.basePath, pathNode.String())
+	}
+
+	stat, err := os.Stat(path)
+	if err != nil {
+		//nolint:wrapcheck // Original error is OK.
+		return nil, err
+	}
 
 	if stat.IsDir() {
-		result, rErr = i.dir(defs, path)
-	} else {
-		result, rErr = i.file(defs, path)
+		return i.dir(defs, path)
 	}
 
-	return result, errors.Join(pErr, rErr)
+	return i.file(defs, path)
 }
 
-func (i *Include) dir(defs node.Definitions, path string) (node.Node, error) {
+func (i *dirInclude) dir(defs node.Definitions, path string) (node.Node, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		//nolint:wrapcheck // Original error is OK.
@@ -66,19 +77,29 @@ func (i *Include) dir(defs node.Definitions, path string) (node.Node, error) {
 		}
 
 		if err != nil {
+			if errors.Is(err, yerrors.ErrEmpty) {
+				continue
+			}
+
+			// TODO Locate error
 			errs = append(errs, err)
 		}
 
 		result, err = result.Merge(value)
 		if err != nil {
+			// TODO Locate error
 			errs = append(errs, err)
 		}
+	}
+
+	if result == nil {
+		return nil, yerrors.ErrEmpty
 	}
 
 	return result, errors.Join(errs...)
 }
 
-func (i *Include) file(defs node.Definitions, path string) (node.Node, error) {
+func (i *dirInclude) file(defs node.Definitions, path string) (node.Node, error) {
 	src, err := read.File(path)
 	if err != nil {
 		return nil, err
@@ -86,11 +107,13 @@ func (i *Include) file(defs node.Definitions, path string) (node.Node, error) {
 
 	dirPath := filepath.Dir(path)
 
-	sourceNode := i.ParseNode(dirPath, src)
+	sourceNode, err := i.parseNode(dirPath, src)
+	if err != nil {
+		return nil, err
+	}
 
 	if sourceNode == nil {
-		//nolint:nilnil // Nil as a value is okay here.
-		return nil, nil
+		return nil, yerrors.ErrEmpty
 	}
 
 	return sourceNode.Process(defs)

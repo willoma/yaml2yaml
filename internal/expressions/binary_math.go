@@ -55,7 +55,7 @@ func mathSequences(left, right node.Sequence, op token.Token) (node.Node, error)
 		return result, nil
 	}
 
-	return left, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithLists)
+	return left, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithSequences)
 }
 
 func mathMappings(left, right node.Mapping, op token.Token) (node.Node, error) {

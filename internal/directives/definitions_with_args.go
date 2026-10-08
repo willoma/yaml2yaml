@@ -29,7 +29,7 @@ func defsWithArgs(parent node.Definitions, args node.Source) *definitionsWithArg
 	for _, item := range mapping {
 		entry, ok := item.(node.MappingEntrySource)
 		if !ok {
-			// Ignore non-raw entries (especially directives)
+			// Ignore non-raw entries (ie. directives)
 			continue
 		}
 

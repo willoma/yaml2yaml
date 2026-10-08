@@ -9,7 +9,7 @@ import (
 )
 
 //nolint:funlen // Exhaustive switch on expression types.
-func Resolve(defs node.Definitions, expr ast.Expr) (node.Node, error) {
+func resolve(defs node.Definitions, expr ast.Expr) (node.Node, error) {
 	// These are all the possible expression types, according to go/ast/ast.go.
 	switch expr := expr.(type) {
 	case *ast.BadExpr:
@@ -31,7 +31,7 @@ func Resolve(defs node.Definitions, expr ast.Expr) (node.Node, error) {
 		return nil, fmt.Errorf("composite: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.ParenExpr:
-		return Resolve(defs, expr.X)
+		return resolve(defs, expr.X)
 
 	case *ast.SelectorExpr:
 		return selector(defs, expr)
@@ -54,8 +54,8 @@ func Resolve(defs node.Definitions, expr ast.Expr) (node.Node, error) {
 	case *ast.StarExpr:
 		return nil, fmt.Errorf("pointer: %w", errors.ErrUnsupportedExpression)
 
-	// 	case *ast.UnaryExpr:
-	// 		return unary(defs, expr)
+	case *ast.UnaryExpr:
+		return unary(defs, expr)
 
 	case *ast.BinaryExpr:
 		return binary(defs, expr)

@@ -10,33 +10,16 @@ import (
 )
 
 func binary(defs node.Definitions, expr *ast.BinaryExpr) (node.Node, error) {
-	var errs []error
+	left, lErr := resolve(defs, expr.X)
+	right, rErr := resolve(defs, expr.Y)
 
-	left, err := Resolve(defs, expr.X)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("left: %w", err))
-	}
-
-	right, err := Resolve(defs, expr.Y)
-	if err != nil {
-		errs = append(errs, fmt.Errorf("right: %w", err))
-	}
-
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
-	}
-
-	if left == nil && right == nil {
-		//nolint:nilnil // Nil as a value is okay here.
-		return nil, nil
-	}
-
-	if left == nil {
-		return right, nil
-	}
-
-	if right == nil {
-		return left, nil
+	switch {
+	case lErr != nil && rErr != nil:
+		return nil, fmt.Errorf("left: %w, right: %w", lErr, rErr)
+	case lErr != nil:
+		return nil, fmt.Errorf("left: %w", lErr)
+	case rErr != nil:
+		return nil, fmt.Errorf("right: %w", rErr)
 	}
 
 	switch expr.Op {

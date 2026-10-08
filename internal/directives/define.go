@@ -1,20 +1,28 @@
 package directives
 
 import (
+	"github.com/willoma/yaml2yaml/internal/errors"
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
 const NameDefine = "!define"
 
-type Define struct {
-	Name  node.Source
-	Value node.Source
+type dirDefine struct {
+	name  node.Source
+	value node.Source
 }
 
-func (d *Define) Process(defs node.Definitions) (node.Node, error) {
-	nameNode, nErr := d.Name.Process(defs)
+func Define(name, value node.Source) *dirDefine {
+	return &dirDefine{name: name, value: value}
+}
 
-	defs.Set(nameNode.String(), d.Value)
+func (d *dirDefine) Process(defs node.Definitions) (node.Node, error) {
+	nameNode, err := d.name.Process(defs)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nErr
+	defs.Set(nameNode.String(), d.value)
+
+	return nil, errors.ErrEmpty
 }

@@ -3,6 +3,7 @@ package expressions
 import (
 	"go/ast"
 
+	"github.com/willoma/yaml2yaml/internal/errors"
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
@@ -15,8 +16,7 @@ func ident(defs node.Definitions, expr *ast.Ident) (node.Node, error) {
 	default:
 		def := defs.Get(expr.Name)
 		if def == nil {
-			//nolint:nilnil // Nil as a value is useful here.
-			return nil, nil
+			return nil, errors.ErrEmpty
 		}
 
 		return def.Process(defs)

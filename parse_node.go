@@ -2,16 +2,18 @@ package yaml2yaml
 
 import (
 	"encoding/base64"
+	"errors"
 	"strconv"
 
 	"go.yaml.in/yaml/v4"
 
 	"github.com/willoma/yaml2yaml/internal/directives"
+	yerrors "github.com/willoma/yaml2yaml/internal/errors"
 	"github.com/willoma/yaml2yaml/internal/expressions"
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
-func parseNode(basePath string, src *yaml.Node) node.Source {
+func parseNode(basePath string, src *yaml.Node) (node.Source, error) {
 	switch src.Kind {
 	case yaml.DocumentNode:
 		return parseNode(basePath, src.Content[0])
@@ -24,11 +26,11 @@ func parseNode(basePath string, src *yaml.Node) node.Source {
 	case yaml.ScalarNode:
 		return parseScalar(basePath, src)
 	default:
-		return nil
+		return nil, yerrors.ErrEmpty
 	}
 }
 
-func parseWithoutTag(basePath string, src *yaml.Node) node.Source {
+func parseWithoutTag(basePath string, src *yaml.Node) (node.Source, error) {
 	return parseNode(basePath, &yaml.Node{
 		Kind:    src.Kind,
 		Value:   src.Value,
@@ -40,91 +42,165 @@ func parseWithoutTag(basePath string, src *yaml.Node) node.Source {
 	})
 }
 
-func parseSequence(basePath string, src *yaml.Node) node.SequenceSource {
-	result := node.SequenceSource(make([]node.Source, len(src.Content)))
+func parseSequence(basePath string, src *yaml.Node) (node.SequenceSource, error) {
+	result := node.SequenceSource(make([]node.Source, 0, len(src.Content)))
 
-	for i, child := range src.Content {
-		result[i] = parseNode(basePath, child)
+	for _, child := range src.Content {
+		childNode, err := parseNode(basePath, child)
+		if err != nil {
+			continue
+		}
+
+		result = append(result, childNode)
 	}
 
-	return result
+	if len(result) == 0 {
+		return nil, yerrors.ErrEmpty
+	}
+
+	return result, nil
 }
 
-func parseMapping(path string, src *yaml.Node) node.MappingSource {
-	result := make(node.MappingSource, len(src.Content)/2)
+func parseMapping(basePath string, src *yaml.Node) (node.MappingSource, error) {
+	result := make(node.MappingSource, 0, len(src.Content)/2)
+
+	var errs []error
 
 	for i := 0; i < len(src.Content); i += 2 {
 		keyNode := src.Content[i]
-		value := parseNode(path, src.Content[i+1])
 
-		switch keyNode.Tag {
-		case directives.NameApply:
-			result[i/2] = &directives.Apply{Name: parseWithoutTag(path, keyNode), Args: value}
-		case directives.NameDefine:
-			result[i/2] = &directives.Define{Name: parseWithoutTag(path, keyNode), Value: value}
-		case directives.NameFor:
-			result[i/2] = &directives.For{Sequence: parseWithoutTag(path, keyNode), Value: value}
-		case directives.NameIf:
-			result[i/2] = &directives.If{Condition: parseWithoutTag(path, keyNode), Value: value}
-		case directives.NameInclude:
-			result[i/2] = &directives.Include{BasePath: path, Path: parseWithoutTag(path, keyNode), ParseNode: parseNode}
-		default:
-			result[i/2] = node.MappingEntrySource{Key: parseNode(path, keyNode), Value: value}
+		value, err := parseNode(basePath, src.Content[i+1])
+		if err != nil {
+			if !errors.Is(err, yerrors.ErrEmpty) {
+				// TODO Locate error
+				errs = append(errs, err)
+			}
+
+			continue
 		}
+
+		entry, err := parseMappingEntry(basePath, keyNode, value)
+		if err != nil {
+			if !errors.Is(err, yerrors.ErrEmpty) {
+				// TODO Locate error
+				errs = append(errs, err)
+			}
+
+			continue
+		}
+
+		result = append(result, entry)
 	}
 
-	return result
+	return result, errors.Join(errs...)
 }
 
-func parseScalar(basePath string, src *yaml.Node) node.Source {
+func parseMappingEntry(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
+	switch keyNode.Tag {
+	case directives.NameApply:
+		name, err := parseWithoutTag(basePath, keyNode)
+		if err != nil {
+			return nil, err
+		}
+
+		return directives.Apply(name, value), nil
+	case directives.NameDefine:
+		name, err := parseWithoutTag(basePath, keyNode)
+		if err != nil {
+			return nil, err
+		}
+
+		return directives.Define(name, value), nil
+	case directives.NameFor:
+		sequence, err := parseWithoutTag(basePath, keyNode)
+		if err != nil {
+			return nil, err
+		}
+
+		return directives.For(sequence, value), nil
+	case directives.NameIf:
+		condition, err := parseWithoutTag(basePath, keyNode)
+		if err != nil {
+			return nil, err
+		}
+
+		return directives.If(condition, value)
+	case directives.NameInclude:
+		path, err := parseWithoutTag(basePath, keyNode)
+		if err != nil {
+			return nil, err
+		}
+
+		return directives.Include(basePath, path, parseNode), nil
+	default:
+		key, err := parseNode(basePath, keyNode)
+		if err != nil {
+			return nil, err
+		}
+
+		return node.MappingEntrySource{Key: key, Value: value}, nil
+	}
+}
+
+func parseScalar(basePath string, src *yaml.Node) (node.Source, error) {
 	switch src.Tag {
 	case directives.NameApply:
-		return &directives.Apply{Name: parseScalarWithoutTag(src)}
+		name, err := parseScalarWithoutTag(src)
+		if err != nil {
+			return nil, err
+		}
+
+		return directives.Apply(name, nil), nil
 	case directives.NameInclude:
-		return &directives.Include{BasePath: basePath, Path: parseScalarWithoutTag(src), ParseNode: parseNode}
+		path, err := parseScalarWithoutTag(src)
+		if err != nil {
+			return nil, err
+		}
+
+		return directives.Include(basePath, path, parseNode), nil
 	case "!!bool":
 		if value, err := strconv.ParseBool(src.Value); err == nil {
-			return node.Bool(value)
+			return node.Bool(value), nil
 		}
 	case "!!int":
 		if value, err := strconv.ParseInt(src.Value, 10, 64); err == nil {
-			return node.Int(value)
+			return node.Int(value), nil
 		}
 	case "!!float":
 		if value, err := strconv.ParseFloat(src.Value, 64); err == nil {
-			return node.Float(value)
+			return node.Float(value), nil
 		}
 	case "!!binary":
 		if value, err := base64.StdEncoding.DecodeString(src.Value); err == nil {
-			return node.Binary(value)
+			return node.Binary(value), nil
 		}
 	case "!!str":
 		if src.Value != "" && src.Value[0] == '?' {
-			return expressions.Source(src.Value[1:])
+			return expressions.Parse(src.Value[1:])
 		}
 
-		return node.String(src.Value)
+		return node.String(src.Value), nil
 	}
 
 	return parseScalarWithoutTag(src)
 }
 
-func parseScalarWithoutTag(src *yaml.Node) node.Source {
+func parseScalarWithoutTag(src *yaml.Node) (node.Source, error) {
 	if src.Value != "" && src.Value[0] == '?' {
-		return expressions.Source(src.Value[1:])
+		return expressions.Parse(src.Value[1:])
 	}
 
 	if value, err := strconv.ParseInt(src.Value, 10, 64); err == nil {
-		return node.Int(value)
+		return node.Int(value), nil
 	}
 
 	if value, err := strconv.ParseFloat(src.Value, 64); err == nil {
-		return node.Float(value)
+		return node.Float(value), nil
 	}
 
 	if value, err := strconv.ParseBool(src.Value); err == nil {
-		return node.Bool(value)
+		return node.Bool(value), nil
 	}
 
-	return node.String(src.Value)
+	return node.String(src.Value), nil
 }

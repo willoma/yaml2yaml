@@ -1,9 +1,9 @@
 package node
 
 import (
-	"go.yaml.in/yaml/v4"
+	"errors"
 
-	"github.com/willoma/yaml2yaml/internal/errors"
+	"go.yaml.in/yaml/v4"
 )
 
 type (

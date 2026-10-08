@@ -1,7 +1,6 @@
 package expressions
 
 import (
-	"fmt"
 	"go/ast"
 
 	"github.com/willoma/yaml2yaml/internal/errors"
@@ -9,24 +8,18 @@ import (
 )
 
 func selector(defs node.Definitions, expr *ast.SelectorExpr) (node.Node, error) {
-	var errs []error
-
-	value, err := Resolve(defs, expr.X)
+	value, err := resolve(defs, expr.X)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("left: %w", err))
+		return nil, err
 	}
 
 	if expr.Sel == nil {
-		errs = append(errs, errors.ErrEmptySelector)
-	}
-
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
+		return nil, errors.ErrEmptySelector
 	}
 
 	xMap, ok := value.(node.Mapping)
 	if !ok {
-		return nil, fmt.Errorf("left: %w", errors.ErrNotAMapping)
+		return nil, errors.ErrNotAMapping
 	}
 
 	for _, entry := range xMap {
@@ -35,6 +28,5 @@ func selector(defs node.Definitions, expr *ast.SelectorExpr) (node.Node, error) 
 		}
 	}
 
-	//nolint:nilnil // Nil as a value is okay here.
-	return nil, nil
+	return nil, errors.ErrEmpty
 }

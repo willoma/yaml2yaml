@@ -1,25 +1,26 @@
 package expressions
 
-// import (
-// 	"fmt"
-// 	"go/ast"
-// 	"go/token"
+import (
+	"fmt"
+	"go/ast"
+	"go/token"
 
-// 	"github.com/willoma/yaml2yaml/internal/errors"
-// 	"github.com/willoma/yaml2yaml/internal/node"
-// )
+	"github.com/willoma/yaml2yaml/internal/errors"
+	"github.com/willoma/yaml2yaml/internal/node"
+)
 
-// func unary(defs *node.Definitions, expr *ast.UnaryExpr) (node.Node, error) {
-// 	value, rErr := Resolve(defs, expr.X)
+func unary(defs node.Definitions, expr *ast.UnaryExpr) (node.Node, error) {
+	value, err := resolve(defs, expr.X)
+	if err != nil {
+		return nil, err
+	}
 
-// 	switch expr.Op {
-// 	case token.NOT:
-// 		ok, _ := value.Bool()
+	switch expr.Op {
+	case token.NOT:
+		ok, _ := value.Bool()
 
-// 		return node.Bool(!ok), rErr
-// 	default:
-// 		tErr := fmt.Errorf("%q: %w in unary expression", expr.Op.String(), errors.ErrUnsupportedOperator)
-
-// 		return nil, errors.Join(rErr, tErr)
-// 	}
-// }
+		return node.Bool(!ok), nil
+	default:
+		return nil, fmt.Errorf("%q: %w in unary expression", expr.Op.String(), errors.ErrUnsupportedOperator)
+	}
+}

@@ -7,8 +7,6 @@ import (
 
 	"go.yaml.in/yaml/v4"
 
-	"github.com/willoma/yaml2yaml/internal/errors"
-	"github.com/willoma/yaml2yaml/internal/node"
 	"github.com/willoma/yaml2yaml/internal/read"
 )
 
@@ -36,35 +34,30 @@ func ProcessFile(path string) ([]byte, error) {
 }
 
 func processToBytes(basePath string, src *yaml.Node) ([]byte, error) {
-	var errs []error
-
 	parsed, err := Process(basePath, src)
 	if err != nil {
-		errs = append(errs, err)
+		return nil, err
 	}
 
 	result, err := yaml.Dump(parsed, yaml.WithIndent(indentSize))
 	if err != nil {
-		errs = append(errs, fmt.Errorf("converting data to YAML: %w", err))
+		return nil, fmt.Errorf("converting data to YAML: %w", err)
 	}
 
-	return result, errors.Join(errs...)
+	return result, nil
 }
 
 // Process applies any processing to a YAML node, returning the processed node and any errors.
 func Process(basePath string, src *yaml.Node) (*yaml.Node, error) {
-	var errs []error
-
-	sourceNode := parseNode(basePath, src)
-
-	if sourceNode == nil {
-		return nil, errors.ErrEmptyNode
-	}
-
-	processed, err := sourceNode.Process(node.NewDefinitions())
+	sourceNode, err := parseNode(basePath, src)
 	if err != nil {
-		errs = append(errs, err)
+		return nil, err
 	}
 
-	return processed.ToYAML(), errors.Join(errs...)
+	processed, err := sourceNode.Process(rootDefinitions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return processed.ToYAML(), nil
 }

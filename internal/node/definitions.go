@@ -5,17 +5,6 @@ type Definitions interface {
 	Set(name string, value Source)
 }
 
-type rootDefinitions map[string]Source
-
-// NewDefinitions returns a new, empty [Definitions].
-func NewDefinitions() Definitions {
-	return rootDefinitions{}
-}
-
-func (d rootDefinitions) Get(name string) Source { return d[name] }
-
-func (d rootDefinitions) Set(name string, value Source) { d[name] = value }
-
 type childDefinitions struct {
 	parent      Definitions
 	definitions map[string]Source

@@ -1,12 +1,13 @@
 package node
 
 import (
+	"errors"
 	"slices"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
 
-	"github.com/willoma/yaml2yaml/internal/errors"
+	yerrors "github.com/willoma/yaml2yaml/internal/errors"
 )
 
 type (
@@ -23,14 +24,19 @@ func (m MappingSource) Process(parentDefs Definitions) (Node, error) {
 	for _, item := range m {
 		itemResult, err := item.Process(defs)
 		if err != nil {
+			if errors.Is(err, yerrors.ErrEmpty) {
+				continue
+			}
+
+			// TODO Locate error
 			errs = append(errs, err)
 		}
 
-		if itemResult == nil {
-			continue
-		}
-
 		processed = append(processed, itemResult)
+	}
+
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 
 	switch len(processed) {
@@ -38,10 +44,9 @@ func (m MappingSource) Process(parentDefs Definitions) (Node, error) {
 		// No children, pass definitions to parent and ignore the mapping altogether.
 		defs.passToParent()
 
-		//nolint:nilnil // Nil as a value is okay here.
-		return nil, nil
+		return nil, yerrors.ErrEmpty
 	case 1:
-		return processed[0], errors.Join(errs...)
+		return processed[0], nil
 	}
 
 	var (
@@ -113,7 +118,7 @@ func (m Mapping) Merge(other Node) (Node, error) {
 
 		return m, errors.Join(errs...)
 	default:
-		return m, errors.ErrUnkeyedValue
+		return m, yerrors.ErrUnkeyedValue
 	}
 }
 
@@ -139,16 +144,14 @@ func (m Mapping) addEntry(processed MappingEntry) (Mapping, error) {
 
 		valueMap, ok := entry.Value.(Mapping)
 		if !ok {
-			entry.Value = processed.Value
-			m[i] = entry
+			m[i].Value = processed.Value
 
 			return m, nil
 		}
 
-		newValue, err := valueMap.Merge(processed.Value)
+		var err error
 
-		entry.Value = newValue
-		m[i] = entry
+		m[i].Value, err = valueMap.Merge(processed.Value)
 
 		return m, err
 	}
