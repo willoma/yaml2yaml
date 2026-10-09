@@ -1,6 +1,8 @@
 # Also update the version in .github/workflows/lint.yml
 GOLANGCILINT_VERSION=2.14.0
 
+.PHONY: build check lint lintfix test vulncheck tidy
+
 build: dist/yaml2yaml
 
 check: lint test vulncheck
@@ -16,6 +18,9 @@ test:
 
 vulncheck:
 	go tool govulncheck ./...
+
+tidy:
+	go mod tidy
 
 dist/golangci-lint:
 	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b dist v$(GOLANGCILINT_VERSION)
