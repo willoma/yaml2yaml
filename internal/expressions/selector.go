@@ -1,6 +1,7 @@
 package expressions
 
 import (
+	"fmt"
 	"go/ast"
 
 	"github.com/willoma/yaml2yaml/internal/errors"
@@ -8,13 +9,15 @@ import (
 )
 
 func (s *Source) selector(defs node.Definitions, expr *ast.SelectorExpr) (node.Node, error) {
+	errs := errors.NewJoined()
+
 	value, err := s.resolve(defs, expr.X)
 	if err != nil {
-		return nil, err
+		errs.Add(fmt.Errorf("expression: %w", err))
 	}
 
 	if expr.Sel == nil {
-		return nil, errors.ErrEmptySelector
+		return nil, fmt.Errorf("selector: %w", errors.ErrEmpty)
 	}
 
 	xMap, ok := value.(node.Mapping)

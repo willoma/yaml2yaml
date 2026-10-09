@@ -3,6 +3,8 @@ package expressions
 import (
 	"fmt"
 	"go/token"
+	"slices"
+	"strings"
 
 	"github.com/willoma/yaml2yaml/internal/errors"
 	"github.com/willoma/yaml2yaml/internal/node"
@@ -10,9 +12,7 @@ import (
 
 func (s *Source) binMath(left, right node.Node, op token.Token) (node.Node, error) {
 	if lseq, ok := left.(node.Sequence); ok {
-		if rseq, ok := right.(node.Sequence); ok {
-			return s.mathSequences(lseq, rseq, op)
-		}
+		return s.mathSequence(lseq, right, op)
 	}
 
 	if lmap, ok := left.(node.Mapping); ok {
@@ -22,98 +22,116 @@ func (s *Source) binMath(left, right node.Node, op token.Token) (node.Node, erro
 	}
 
 	if lbin, ok := left.(node.Binary); ok {
-		if rbin, ok := right.(node.Binary); ok {
-			return s.mathBinaries(lbin, rbin, op)
-		}
+		return s.mathBinary(lbin, right, op)
 	}
 
 	if lint, ok := left.Int(); ok {
 		if rint, ok := right.Int(); ok {
-			return s.mathInts(lint, rint, op), nil
+			return s.mathInts(lint, rint, op)
 		}
 	}
 
 	if lfloat, ok := left.Float(); ok {
 		if rfloat, ok := right.Float(); ok {
-			result, err := s.mathFloats(lfloat, rfloat, op)
-
-			return node.NewFloat(s.pos, result), err
+			return s.mathFloats(lfloat, rfloat, op)
 		}
 	}
 
-	result, err := s.mathStrings(left.String(), right.String(), op)
-
-	return node.NewString(s.pos, result), err
+	return s.mathString(left.String(), right, op)
 }
 
-func (s *Source) mathSequences(left, right node.Sequence, op token.Token) (node.Node, error) {
-	if op == token.ADD {
-		result := make(node.Sequence, 0, len(left)+len(right))
-		result = append(result, left...)
-		result = append(result, right...)
+func (s *Source) mathSequence(left node.Sequence, right node.Node, op token.Token) (node.Node, error) {
+	switch op {
+	case token.ADD:
+		return left.Merge(right)
+	case token.MUL:
+		rint, ok := right.Int()
+		if !ok {
+			return nil, fmt.Errorf("right: %w", errors.ErrNotANumber)
+		}
 
-		return result, nil
+		return slices.Repeat(left, int(rint)), nil
+
+	default:
+		return nil, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithSequences)
 	}
+}
 
-	return left, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithSequences)
+func (s *Source) mathBinary(left node.Binary, right node.Node, op token.Token) (node.Binary, error) {
+	switch op {
+	case token.ADD:
+		rbin, ok := right.(node.Binary)
+		if !ok {
+			return node.Binary{}, fmt.Errorf("right: %w", errors.ErrNotABinary)
+		}
+
+		return node.NewBinary(s.pos, append(left.Value, rbin.Value...)), nil
+	case token.MUL:
+		rint, ok := right.Int()
+		if !ok {
+			return node.Binary{}, fmt.Errorf("right: %w", errors.ErrNotANumber)
+		}
+
+		left.Value = slices.Repeat(left.Value, int(rint))
+
+		return left, nil
+	default:
+		return node.Binary{}, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithBinaries)
+	}
 }
 
 func (s *Source) mathMappings(left, right node.Mapping, op token.Token) (node.Node, error) {
 	if op == token.ADD {
-		result, err := left.Merge(right)
-
-		return result, err
+		return left.Merge(right)
 	}
 
-	return left, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithMaps)
+	return nil, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithMaps)
 }
 
-func (s *Source) mathInts(left, right int64, op token.Token) node.Int {
+func (s *Source) mathInts(left, right int64, op token.Token) (node.Int, error) {
 	switch op {
 	case token.ADD:
-		return node.NewInt(s.pos, left+right)
+		return node.NewInt(s.pos, left+right), nil
 	case token.SUB:
-		return node.NewInt(s.pos, left-right)
+		return node.NewInt(s.pos, left-right), nil
 	case token.MUL:
-		return node.NewInt(s.pos, left*right)
+		return node.NewInt(s.pos, left*right), nil
 	case token.QUO:
-		return node.NewInt(s.pos, left/right)
+		return node.NewInt(s.pos, left/right), nil
 	case token.REM:
-		return node.NewInt(s.pos, left%right)
+		return node.NewInt(s.pos, left%right), nil
 	default:
-		return node.NewInt(s.pos, 0)
+		return node.Int{}, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithIntegers)
 	}
 }
 
-func (s *Source) mathFloats(left, right float64, op token.Token) (float64, error) {
+func (s *Source) mathFloats(left, right float64, op token.Token) (node.Float, error) {
 	switch op {
 	case token.ADD:
-		return left + right, nil
+		return node.NewFloat(s.pos, left+right), nil
 	case token.SUB:
-		return left - right, nil
+		return node.NewFloat(s.pos, left-right), nil
 	case token.MUL:
-		return left * right, nil
+		return node.NewFloat(s.pos, left*right), nil
 	case token.QUO:
-		return left / right, nil
+		return node.NewFloat(s.pos, left/right), nil
 	default:
-		return 0, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithFloats)
+		return node.Float{}, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithFloats)
 	}
 }
 
-func (s *Source) mathStrings(left, right string, op token.Token) (string, error) {
+func (s *Source) mathString(left string, right node.Node, op token.Token) (node.String, error) {
 	switch op {
 	case token.ADD:
-		return left + right, nil
-	default:
-		return "", fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithStrings)
-	}
-}
+		return node.NewString(s.pos, left+right.String()), nil
+	case token.MUL:
+		rint, ok := right.Int()
+		if !ok {
+			return node.String{}, fmt.Errorf("right: %w", errors.ErrNotANumber)
+		}
 
-func (s *Source) mathBinaries(left, right node.Binary, op token.Token) (node.Binary, error) {
-	switch op {
-	case token.ADD:
-		return node.NewBinary(s.pos, append(left.Value, right.Value...)), nil
+		return node.NewString(s.pos, strings.Repeat(left, int(rint))), nil
 	default:
-		return node.Binary{}, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithBinaries)
+		return node.String{}, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithStrings)
 	}
 }

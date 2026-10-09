@@ -21,6 +21,12 @@ darkblue:
 mediumgreen:
   rank: 2
   base_color: green
+pastelyellow:
+  rank: 3
+  base_color: yellow
+lightgrey:
+  rank: 4
+  base_color: grey
 colorslist:
 - name: lightred
   base_color: red
@@ -28,4 +34,14 @@ colorslist:
   base_color: blue
 - name: mediumgreen
   base_color: green
+- name: pastelyellow
+  base_color: yellow
+- name: lightgrey
+  base_color: grey
+somecolors:
+- base: blue
+  variant: dark
+- base: green
+  variant: medium
+fourthcolor: yellow
 has_colors: true

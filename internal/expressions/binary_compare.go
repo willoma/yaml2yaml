@@ -7,7 +7,7 @@ import (
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
-func (s *Source) compare(left, right node.Node, op token.Token) bool {
+func (s *Source) binCompare(left, right node.Node, op token.Token) bool {
 	// Before trying scalars, try sequences, mappings, and binary.
 	if lseq, ok := left.(node.Sequence); ok {
 		if rseq, ok := right.(node.Sequence); ok {
@@ -61,7 +61,7 @@ func (s *Source) compareSequences(left, right node.Sequence, op token.Token) boo
 	}
 
 	for i := range left {
-		if !s.compare(left[i], right[i], op) {
+		if !s.binCompare(left[i], right[i], op) {
 			return false
 		}
 	}
@@ -78,11 +78,11 @@ func (s *Source) compareMappings(left, right node.Mapping, op token.Token) bool 
 	}
 
 	for i := range left {
-		if !s.compare(left[i].Key, right[i].Key, op) {
+		if !s.binCompare(left[i].Key, right[i].Key, op) {
 			return false
 		}
 
-		if !s.compare(left[i].Value, right[i].Value, op) {
+		if !s.binCompare(left[i].Value, right[i].Value, op) {
 			return false
 		}
 	}

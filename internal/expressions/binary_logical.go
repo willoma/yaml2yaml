@@ -6,7 +6,7 @@ import (
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
-func (s *Source) logical(left, right node.Node, op token.Token) node.Bool {
+func (s *Source) binLogical(left, right node.Node, op token.Token) node.Bool {
 	bleft, _ := left.Bool()
 	bright, _ := right.Bool()
 
