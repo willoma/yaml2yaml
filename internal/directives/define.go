@@ -1,7 +1,7 @@
 package directives
 
 import (
-	"github.com/willoma/yaml2yaml/internal/errors"
+	"github.com/willoma/yaml2yaml/errors"
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 

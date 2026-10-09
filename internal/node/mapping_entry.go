@@ -3,7 +3,7 @@ package node
 import (
 	"go.yaml.in/yaml/v4"
 
-	"github.com/willoma/yaml2yaml/internal/errors"
+	"github.com/willoma/yaml2yaml/errors"
 )
 
 type (
