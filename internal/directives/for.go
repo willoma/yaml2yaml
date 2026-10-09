@@ -1,10 +1,9 @@
 package directives
 
 import (
-	"errors"
 	"fmt"
 
-	yerrors "github.com/willoma/yaml2yaml/internal/errors"
+	"github.com/willoma/yaml2yaml/internal/errors"
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
@@ -19,8 +18,16 @@ func For(sequence, value node.Source) *dirFor {
 	return &dirFor{sequence: sequence, value: value}
 }
 
+func (f *dirFor) Pos() [2]int {
+	return f.sequence.Pos()
+}
+
+func (f *dirFor) String() string {
+	return NameFor + " " + f.sequence.String()
+}
+
 func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
-	seq, ok := f.sequence.(node.SequenceSource)
+	seq, ok := f.sequence.(*node.SequenceSource)
 	if !ok {
 		seqNode, err := f.sequence.Process(defs)
 		if err != nil {
@@ -29,50 +36,43 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 
 		defNode := defs.Get(seqNode.String())
 		if defNode == nil {
-			return nil, fmt.Errorf("sequence: %w", yerrors.ErrEmpty)
+			return nil, fmt.Errorf("sequence: %w", errors.ErrEmpty)
 		}
 
-		seq, ok = defNode.(node.SequenceSource)
+		seq, ok = defNode.(*node.SequenceSource)
 		if !ok {
-			return nil, fmt.Errorf(`sequence: %w`, yerrors.ErrNotASequence)
+			return nil, fmt.Errorf(`sequence: %w`, errors.ErrNotASequence)
 		}
 	}
 
 	var result node.Node
 
 	switch value := f.value.(type) {
-	case node.SequenceSource:
-		result = make(node.Sequence, 0, len(seq)*len(value))
-	case node.MappingSource:
-		result = make(node.Mapping, 0, len(seq)*len(value))
+	case *node.SequenceSource:
+		result = make(node.Sequence, 0, len(seq.Value)*len(value.Value))
+	case *node.MappingSource:
+		result = make(node.Mapping, 0, len(seq.Value)*len(value.Value))
 	default:
-		return nil, fmt.Errorf(`content: %w`, yerrors.ErrNotAMappingOrSequence)
+		return nil, fmt.Errorf(`content: %w`, errors.ErrNotAMappingOrSequence)
 	}
 
-	var errs []error
+	errs := errors.NewJoined()
 
-	for i, item := range seq {
+	for i, item := range seq.Value {
 		childDefs := defsWithArgs(defs, item)
 
-		childDefs.Set("i", node.Int(i))
+		childDefs.Set("i", node.NewInt(f.sequence.Pos(), int64(i)))
 
 		childResult, err := f.value.Process(childDefs)
 		if err != nil {
-			if errors.Is(err, yerrors.ErrEmpty) {
-				continue
-			}
-			// TODO Locate error
-			errs = append(errs, err)
+			errs.Add(err)
 
 			continue
 		}
 
 		result, err = result.Merge(childResult)
-		if err != nil {
-			// TODO Locate error
-			errs = append(errs, err)
-		}
+		errs.Add(err)
 	}
 
-	return result, errors.Join(errs...)
+	return result, errs.Compact()
 }

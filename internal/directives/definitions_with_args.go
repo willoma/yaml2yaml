@@ -19,15 +19,15 @@ func defsWithArgs(parent node.Definitions, args node.Source) *definitionsWithArg
 		return defs
 	}
 
-	mapping, ok := args.(node.MappingSource)
+	mapping, ok := args.(*node.MappingSource)
 	if !ok {
 		defs.args["_"] = args
 
 		return defs
 	}
 
-	for _, item := range mapping {
-		entry, ok := item.(node.MappingEntrySource)
+	for _, item := range mapping.Value {
+		entry, ok := item.(*node.MappingEntrySource)
 		if !ok {
 			// Ignore non-raw entries (ie. directives)
 			continue

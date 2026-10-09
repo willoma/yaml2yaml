@@ -1,37 +1,68 @@
 package node
 
 import (
-	"errors"
+	"strconv"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/internal/errors"
 )
 
 type (
-	SequenceSource []Source
-	Sequence       []Node
+	SequenceSource struct {
+		pos   [2]int
+		Value []Source
+	}
+
+	Sequence []Node
 )
 
-func (s SequenceSource) Process(defs Definitions) (Node, error) {
-	var errs []error
+func NewSequenceSource(pos [2]int, length int) *SequenceSource {
+	return &SequenceSource{
+		pos:   pos,
+		Value: make([]Source, 0, length),
+	}
+}
 
-	result := make(Sequence, 0, len(s))
+func (s *SequenceSource) Append(src Source) {
+	s.Value = append(s.Value, src)
+}
 
-	for _, item := range s {
+func (s *SequenceSource) Length() int {
+	return len(s.Value)
+}
+
+func (s *SequenceSource) Pos() [2]int {
+	return s.pos
+}
+
+func (s *SequenceSource) String() string {
+	result := make([]string, len(s.Value))
+	for i, item := range s.Value {
+		result[i] = item.String()
+	}
+
+	return "[" + strings.Join(result, ", ") + "]"
+}
+
+func (s *SequenceSource) Process(defs Definitions) (Node, error) {
+	errs := errors.NewJoined()
+
+	result := make(Sequence, 0, len(s.Value))
+
+	for i, item := range s.Value {
 		processed, err := item.Process(defs)
 		if err != nil {
-			// TODO Locate error
-			errs = append(errs, err)
-		}
+			errs.Add(errors.Locate("["+strconv.Itoa(i)+"]", s.pos, err))
 
-		if processed == nil {
 			continue
 		}
 
 		result = append(result, processed)
 	}
 
-	return result, errors.Join(errs...)
+	return result, errs.Compact()
 }
 
 func (s Sequence) Bool() (value, ok bool) {

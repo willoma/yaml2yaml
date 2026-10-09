@@ -1,14 +1,13 @@
 package directives
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"go.yaml.in/yaml/v4"
 
-	yerrors "github.com/willoma/yaml2yaml/internal/errors"
+	"github.com/willoma/yaml2yaml/internal/errors"
 	"github.com/willoma/yaml2yaml/internal/node"
 	"github.com/willoma/yaml2yaml/internal/read"
 )
@@ -27,6 +26,14 @@ type (
 
 func Include(basePath string, path node.Source, parseNode ParseNode) *dirInclude {
 	return &dirInclude{basePath: basePath, path: path, parseNode: parseNode}
+}
+
+func (i *dirInclude) Pos() [2]int {
+	return i.path.Pos()
+}
+
+func (i *dirInclude) String() string {
+	return NameInclude + " " + i.path.String()
 }
 
 func (i *dirInclude) Process(defs node.Definitions) (node.Node, error) {
@@ -63,7 +70,7 @@ func (i *dirInclude) dir(defs node.Definitions, path string) (node.Node, error) 
 
 	var result node.Node
 
-	var errs []error
+	errs := errors.NewJoined()
 
 	for _, entry := range entries {
 		var value node.Node
@@ -77,26 +84,20 @@ func (i *dirInclude) dir(defs node.Definitions, path string) (node.Node, error) 
 		}
 
 		if err != nil {
-			if errors.Is(err, yerrors.ErrEmpty) {
-				continue
-			}
+			errs.Add(err)
 
-			// TODO Locate error
-			errs = append(errs, err)
+			continue
 		}
 
 		result, err = result.Merge(value)
-		if err != nil {
-			// TODO Locate error
-			errs = append(errs, err)
-		}
+		errs.Add(err)
 	}
 
 	if result == nil {
-		return nil, yerrors.ErrEmpty
+		return nil, errors.ErrEmpty
 	}
 
-	return result, errors.Join(errs...)
+	return result, errs.Compact()
 }
 
 func (i *dirInclude) file(defs node.Definitions, path string) (node.Node, error) {
@@ -113,7 +114,7 @@ func (i *dirInclude) file(defs node.Definitions, path string) (node.Node, error)
 	}
 
 	if sourceNode == nil {
-		return nil, yerrors.ErrEmpty
+		return nil, errors.ErrEmpty
 	}
 
 	return sourceNode.Process(defs)

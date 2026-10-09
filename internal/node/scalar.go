@@ -11,23 +11,50 @@ import (
 // scalar nodes are sources and results at the same time,
 // because there is no special processing to do on them.
 type (
-	Bool   bool
-	Int    int64
-	Float  float64
-	String string
-	Binary []byte
+	Bool struct {
+		pos   [2]int
+		value bool
+	}
+
+	Int struct {
+		pos   [2]int
+		value int64
+	}
+
+	Float struct {
+		pos   [2]int
+		value float64
+	}
+
+	String struct {
+		pos   [2]int
+		value string
+	}
+
+	Binary struct {
+		pos   [2]int
+		Value []byte
+	}
 )
+
+func NewBool(pos [2]int, value bool) Bool {
+	return Bool{pos: pos, value: value}
+}
+
+func (b Bool) Pos() [2]int {
+	return b.pos
+}
 
 func (b Bool) Process(Definitions) (Node, error) {
 	return b, nil
 }
 
 func (b Bool) Bool() (value, ok bool) {
-	return bool(b), true
+	return b.value, true
 }
 
 func (b Bool) Int() (int64, bool) {
-	if b {
+	if b.value {
 		return 1, false
 	}
 
@@ -35,7 +62,7 @@ func (b Bool) Int() (int64, bool) {
 }
 
 func (b Bool) Float() (float64, bool) {
-	if b {
+	if b.value {
 		return 1, false
 	}
 
@@ -43,7 +70,7 @@ func (b Bool) Float() (float64, bool) {
 }
 
 func (b Bool) String() string {
-	return strconv.FormatBool(bool(b))
+	return strconv.FormatBool(b.value)
 }
 
 func (b Bool) Equals(other Node) bool {
@@ -59,7 +86,15 @@ func (b Bool) Merge(other Node) (Node, error) {
 }
 
 func (b Bool) ToYAML() *yaml.Node {
-	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: strconv.FormatBool(bool(b))}
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: strconv.FormatBool(b.value)}
+}
+
+func NewInt(pos [2]int, value int64) Int {
+	return Int{pos: pos, value: value}
+}
+
+func (i Int) Pos() [2]int {
+	return i.pos
 }
 
 func (i Int) Process(Definitions) (Node, error) {
@@ -67,24 +102,24 @@ func (i Int) Process(Definitions) (Node, error) {
 }
 
 func (i Int) Bool() (value, ok bool) {
-	return i > 0, true
+	return i.value > 0, true
 }
 
 func (i Int) Int() (int64, bool) {
-	return int64(i), true
+	return i.value, true
 }
 
 func (i Int) Float() (float64, bool) {
-	return float64(i), true
+	return float64(i.value), true
 }
 
 func (i Int) String() string {
-	return strconv.FormatInt(int64(i), 10)
+	return strconv.FormatInt(i.value, 10)
 }
 
 func (i Int) Equals(other Node) bool {
 	if otherInt, ok := other.Int(); ok {
-		return int64(i) == otherInt
+		return i.value == otherInt
 	}
 
 	return false
@@ -95,7 +130,15 @@ func (i Int) Merge(other Node) (Node, error) {
 }
 
 func (i Int) ToYAML() *yaml.Node {
-	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: strconv.FormatInt(int64(i), 10)}
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: strconv.FormatInt(i.value, 10)}
+}
+
+func NewFloat(pos [2]int, value float64) Float {
+	return Float{pos: pos, value: value}
+}
+
+func (f Float) Pos() [2]int {
+	return f.pos
 }
 
 func (f Float) Process(Definitions) (Node, error) {
@@ -103,13 +146,13 @@ func (f Float) Process(Definitions) (Node, error) {
 }
 
 func (f Float) Bool() (value, ok bool) {
-	return f > 0, true
+	return f.value > 0, true
 }
 
 func (f Float) Int() (int64, bool) {
-	truncated := math.Trunc(float64(f))
+	truncated := math.Trunc(f.value)
 
-	if truncated == float64(f) {
+	if truncated == f.value {
 		return int64(truncated), true
 	}
 
@@ -117,16 +160,16 @@ func (f Float) Int() (int64, bool) {
 }
 
 func (f Float) Float() (float64, bool) {
-	return float64(f), true
+	return f.value, true
 }
 
 func (f Float) String() string {
-	return strconv.FormatFloat(float64(f), 'f', -1, 64)
+	return strconv.FormatFloat(f.value, 'f', -1, 64)
 }
 
 func (f Float) Equals(other Node) bool {
 	if otherFloat, ok := other.Float(); ok {
-		return float64(f) == otherFloat
+		return f.value == otherFloat
 	}
 
 	return false
@@ -137,7 +180,15 @@ func (f Float) Merge(other Node) (Node, error) {
 }
 
 func (f Float) ToYAML() *yaml.Node {
-	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: strconv.FormatFloat(float64(f), 'f', -1, 64)}
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: strconv.FormatFloat(f.value, 'f', -1, 64)}
+}
+
+func NewString(pos [2]int, value string) String {
+	return String{pos: pos, value: value}
+}
+
+func (s String) Pos() [2]int {
+	return s.pos
 }
 
 func (s String) Process(Definitions) (Node, error) {
@@ -145,7 +196,7 @@ func (s String) Process(Definitions) (Node, error) {
 }
 
 func (s String) Bool() (value, ok bool) {
-	if value, err := strconv.ParseBool(string(s)); err == nil {
+	if value, err := strconv.ParseBool(s.value); err == nil {
 		return value, true
 	}
 
@@ -153,7 +204,7 @@ func (s String) Bool() (value, ok bool) {
 }
 
 func (s String) Int() (int64, bool) {
-	if value, err := strconv.ParseInt(string(s), 10, 64); err == nil {
+	if value, err := strconv.ParseInt(s.value, 10, 64); err == nil {
 		return value, true
 	}
 
@@ -161,7 +212,7 @@ func (s String) Int() (int64, bool) {
 }
 
 func (s String) Float() (float64, bool) {
-	if value, err := strconv.ParseFloat(string(s), 64); err == nil {
+	if value, err := strconv.ParseFloat(s.value, 64); err == nil {
 		return value, true
 	}
 
@@ -169,7 +220,7 @@ func (s String) Float() (float64, bool) {
 }
 
 func (s String) String() string {
-	return string(s)
+	return s.value
 }
 
 func (s String) Equals(other Node) bool {
@@ -191,7 +242,7 @@ func (s String) Equals(other Node) bool {
 		}
 	}
 
-	return string(s) == other.String()
+	return s.value == other.String()
 }
 
 func (s String) Merge(other Node) (Node, error) {
@@ -199,7 +250,15 @@ func (s String) Merge(other Node) (Node, error) {
 }
 
 func (s String) ToYAML() *yaml.Node {
-	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: string(s)}
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: s.value}
+}
+
+func NewBinary(pos [2]int, value []byte) Binary {
+	return Binary{pos: pos, Value: value}
+}
+
+func (b Binary) Pos() [2]int {
+	return b.pos
 }
 
 func (b Binary) Process(Definitions) (Node, error) {
@@ -219,11 +278,11 @@ func (b Binary) Float() (float64, bool) {
 }
 
 func (b Binary) String() string {
-	return string(b)
+	return string(b.Value)
 }
 
 func (b Binary) Equals(other Node) bool {
-	return string(b) == other.String()
+	return string(b.Value) == other.String()
 }
 
 func (b Binary) Merge(other Node) (Node, error) {
@@ -231,5 +290,5 @@ func (b Binary) Merge(other Node) (Node, error) {
 }
 
 func (b Binary) ToYAML() *yaml.Node {
-	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!binary", Value: base64.StdEncoding.EncodeToString(b)}
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!binary", Value: base64.StdEncoding.EncodeToString(b.Value)}
 }

@@ -1,42 +1,74 @@
 package node
 
 import (
-	"errors"
 	"slices"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
 
-	yerrors "github.com/willoma/yaml2yaml/internal/errors"
+	"github.com/willoma/yaml2yaml/internal/errors"
 )
 
 type (
-	MappingSource []Source
-	Mapping       []MappingEntry
-)
-
-func (m MappingSource) Process(parentDefs Definitions) (Node, error) {
-	var errs []error
-
-	processed := make([]Node, 0, len(m))
-	defs := childDefs(parentDefs)
-
-	for _, item := range m {
-		itemResult, err := item.Process(defs)
-		if err != nil {
-			if errors.Is(err, yerrors.ErrEmpty) {
-				continue
-			}
-
-			// TODO Locate error
-			errs = append(errs, err)
-		}
-
-		processed = append(processed, itemResult)
+	MappingSource struct {
+		pos   [2]int
+		Value []Source
 	}
 
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
+	Mapping []MappingEntry
+
+	processedMappingEntry struct {
+		src   Source
+		value Node
+	}
+)
+
+func NewMappingSource(pos [2]int, length int) *MappingSource {
+	return &MappingSource{
+		pos:   pos,
+		Value: make([]Source, 0, length),
+	}
+}
+
+func (m *MappingSource) Append(src Source) {
+	m.Value = append(m.Value, src)
+}
+
+func (m *MappingSource) Length() int {
+	return len(m.Value)
+}
+
+func (m *MappingSource) Pos() [2]int {
+	return m.pos
+}
+
+func (m *MappingSource) String() string {
+	result := make([]string, 0, len(m.Value))
+	for i, item := range m.Value {
+		result[i] = item.String()
+	}
+
+	return "{" + strings.Join(result, ", ") + "}"
+}
+
+func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
+	errs := errors.NewJoined()
+	defs := childDefs(parentDefs)
+	processed := make([]processedMappingEntry, 0, len(m.Value))
+
+	for _, item := range m.Value {
+		itemResult, err := item.Process(defs)
+		if err != nil {
+			errs.Add(errors.Locate(item.String(), item.Pos(), err))
+
+			continue
+		}
+
+		processed = append(processed, processedMappingEntry{item, itemResult})
+	}
+
+	if err := errs.Compact(); err != nil {
+		return nil, err
 	}
 
 	switch len(processed) {
@@ -44,9 +76,9 @@ func (m MappingSource) Process(parentDefs Definitions) (Node, error) {
 		// No children, pass definitions to parent and ignore the mapping altogether.
 		defs.passToParent()
 
-		return nil, yerrors.ErrEmpty
+		return nil, errors.ErrEmpty
 	case 1:
-		return processed[0], nil
+		return processed[0].value, nil
 	}
 
 	var (
@@ -55,14 +87,15 @@ func (m MappingSource) Process(parentDefs Definitions) (Node, error) {
 	)
 
 	for _, child := range processed {
-		result, err = result.Merge(child)
+		result, err = result.Merge(child.value)
 		if err != nil {
-			// TODO Locate error
-			errs = append(errs, err)
+			errs.Add(errors.Locate(child.src.String(), child.src.Pos(), err))
+
+			continue
 		}
 	}
 
-	return result, errors.Join(errs...)
+	return result, errs.Compact()
 }
 
 func (m Mapping) Bool() (value, ok bool) {
@@ -103,22 +136,19 @@ func (m Mapping) Merge(other Node) (Node, error) {
 	case MappingEntry:
 		return m.addEntry(other)
 	case Mapping:
-		var errs []error
+		errs := errors.NewJoined()
 
 		for _, child := range other {
 			newM, err := m.Merge(child)
-			if err != nil {
-				// TODO Locate error
-				errs = append(errs, err)
-			}
+			errs.Add(err)
 
 			//nolint:forcetypeassert // The result of [Mapping.Merge] is always a [Mapping].
 			m = newM.(Mapping)
 		}
 
-		return m, errors.Join(errs...)
+		return m, errs.Compact()
 	default:
-		return m, yerrors.ErrUnkeyedValue
+		return m, errors.ErrUnkeyedValue
 	}
 }
 

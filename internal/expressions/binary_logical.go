@@ -6,13 +6,13 @@ import (
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
-func logical(left, right node.Node, op token.Token) bool {
+func (s *Source) logical(left, right node.Node, op token.Token) node.Bool {
 	bleft, _ := left.Bool()
 	bright, _ := right.Bool()
 
 	if op == token.LAND {
-		return bleft && bright
+		return node.NewBool(s.pos, bleft && bright)
 	}
 
-	return bleft || bright
+	return node.NewBool(s.pos, bleft || bright)
 }

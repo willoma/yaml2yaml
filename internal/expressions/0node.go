@@ -4,23 +4,34 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"strings"
 
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
 type Source struct {
+	pos  [2]int
+	src  string
 	expr ast.Expr
 }
 
-func Parse(src string) (*Source, error) {
-	expr, err := parser.ParseExpr(src)
+func Parse(pos [2]int, src string) (*Source, error) {
+	expr, err := parser.ParseExpr(strings.TrimPrefix(src, "?"))
 	if err != nil {
 		return nil, fmt.Errorf("parsing error: %w", err)
 	}
 
-	return &Source{expr: expr}, nil
+	return &Source{pos: pos, src: src, expr: expr}, nil
 }
 
-func (s Source) Process(defs node.Definitions) (node.Node, error) {
-	return resolve(defs, s.expr)
+func (s *Source) Pos() [2]int {
+	return s.pos
+}
+
+func (s *Source) String() string {
+	return s.src
+}
+
+func (s *Source) Process(defs node.Definitions) (node.Node, error) {
+	return s.resolve(defs, s.expr)
 }

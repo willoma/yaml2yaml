@@ -7,8 +7,8 @@ import (
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
-func selector(defs node.Definitions, expr *ast.SelectorExpr) (node.Node, error) {
-	value, err := resolve(defs, expr.X)
+func (s *Source) selector(defs node.Definitions, expr *ast.SelectorExpr) (node.Node, error) {
+	value, err := s.resolve(defs, expr.X)
 	if err != nil {
 		return nil, err
 	}

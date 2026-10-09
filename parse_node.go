@@ -2,13 +2,12 @@ package yaml2yaml
 
 import (
 	"encoding/base64"
-	"errors"
 	"strconv"
 
 	"go.yaml.in/yaml/v4"
 
 	"github.com/willoma/yaml2yaml/internal/directives"
-	yerrors "github.com/willoma/yaml2yaml/internal/errors"
+	"github.com/willoma/yaml2yaml/internal/errors"
 	"github.com/willoma/yaml2yaml/internal/expressions"
 	"github.com/willoma/yaml2yaml/internal/node"
 )
@@ -26,7 +25,7 @@ func parseNode(basePath string, src *yaml.Node) (node.Source, error) {
 	case yaml.ScalarNode:
 		return parseScalar(basePath, src)
 	default:
-		return nil, yerrors.ErrEmpty
+		return nil, errors.ErrEmpty
 	}
 }
 
@@ -42,57 +41,59 @@ func parseWithoutTag(basePath string, src *yaml.Node) (node.Source, error) {
 	})
 }
 
-func parseSequence(basePath string, src *yaml.Node) (node.SequenceSource, error) {
-	result := node.SequenceSource(make([]node.Source, 0, len(src.Content)))
+func parseSequence(basePath string, src *yaml.Node) (*node.SequenceSource, error) {
+	result := node.NewSequenceSource(pos(src), len(src.Content))
 
-	for _, child := range src.Content {
+	errs := errors.NewJoined()
+
+	for i, child := range src.Content {
 		childNode, err := parseNode(basePath, child)
 		if err != nil {
+			errs.Add(errors.Locate("["+strconv.Itoa(i)+"]", pos(src), err))
+
 			continue
 		}
 
-		result = append(result, childNode)
+		result.Append(childNode)
 	}
 
-	if len(result) == 0 {
-		return nil, yerrors.ErrEmpty
+	if err := errs.Compact(); err != nil {
+		return nil, err
+	}
+
+	if len(result.Value) == 0 {
+		return nil, errors.ErrEmpty
 	}
 
 	return result, nil
 }
 
-func parseMapping(basePath string, src *yaml.Node) (node.MappingSource, error) {
-	result := make(node.MappingSource, 0, len(src.Content)/2)
+func parseMapping(basePath string, src *yaml.Node) (*node.MappingSource, error) {
+	result := node.NewMappingSource(pos(src), len(src.Content)/2)
 
-	var errs []error
+	errs := errors.NewJoined()
 
 	for i := 0; i < len(src.Content); i += 2 {
 		keyNode := src.Content[i]
 
 		value, err := parseNode(basePath, src.Content[i+1])
 		if err != nil {
-			if !errors.Is(err, yerrors.ErrEmpty) {
-				// TODO Locate error
-				errs = append(errs, err)
-			}
+			errs.Add(locateMappingEntryError(i, basePath, keyNode, err))
 
 			continue
 		}
 
 		entry, err := parseMappingEntry(basePath, keyNode, value)
 		if err != nil {
-			if !errors.Is(err, yerrors.ErrEmpty) {
-				// TODO Locate error
-				errs = append(errs, err)
-			}
+			errs.Add(locateMappingEntryError(i, basePath, keyNode, err))
 
 			continue
 		}
 
-		result = append(result, entry)
+		result.Append(entry)
 	}
 
-	return result, errors.Join(errs...)
+	return result, errs.Compact()
 }
 
 func parseMappingEntry(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
@@ -138,7 +139,7 @@ func parseMappingEntry(basePath string, keyNode *yaml.Node, value node.Source) (
 			return nil, err
 		}
 
-		return node.MappingEntrySource{Key: key, Value: value}, nil
+		return node.NewMappingEntrySource(key, value), nil
 	}
 }
 
@@ -160,26 +161,26 @@ func parseScalar(basePath string, src *yaml.Node) (node.Source, error) {
 		return directives.Include(basePath, path, parseNode), nil
 	case "!!bool":
 		if value, err := strconv.ParseBool(src.Value); err == nil {
-			return node.Bool(value), nil
+			return node.NewBool(pos(src), value), nil
 		}
 	case "!!int":
 		if value, err := strconv.ParseInt(src.Value, 10, 64); err == nil {
-			return node.Int(value), nil
+			return node.NewInt(pos(src), value), nil
 		}
 	case "!!float":
 		if value, err := strconv.ParseFloat(src.Value, 64); err == nil {
-			return node.Float(value), nil
+			return node.NewFloat(pos(src), value), nil
 		}
 	case "!!binary":
 		if value, err := base64.StdEncoding.DecodeString(src.Value); err == nil {
-			return node.Binary(value), nil
+			return node.NewBinary(pos(src), value), nil
 		}
 	case "!!str":
 		if src.Value != "" && src.Value[0] == '?' {
-			return expressions.Parse(src.Value[1:])
+			return expressions.Parse(pos(src), src.Value)
 		}
 
-		return node.String(src.Value), nil
+		return node.NewString(pos(src), src.Value), nil
 	}
 
 	return parseScalarWithoutTag(src)
@@ -187,20 +188,20 @@ func parseScalar(basePath string, src *yaml.Node) (node.Source, error) {
 
 func parseScalarWithoutTag(src *yaml.Node) (node.Source, error) {
 	if src.Value != "" && src.Value[0] == '?' {
-		return expressions.Parse(src.Value[1:])
+		return expressions.Parse(pos(src), src.Value)
 	}
 
 	if value, err := strconv.ParseInt(src.Value, 10, 64); err == nil {
-		return node.Int(value), nil
+		return node.NewInt(pos(src), value), nil
 	}
 
 	if value, err := strconv.ParseFloat(src.Value, 64); err == nil {
-		return node.Float(value), nil
+		return node.NewFloat(pos(src), value), nil
 	}
 
 	if value, err := strconv.ParseBool(src.Value); err == nil {
-		return node.Bool(value), nil
+		return node.NewBool(pos(src), value), nil
 	}
 
-	return node.String(src.Value), nil
+	return node.NewString(pos(src), src.Value), nil
 }

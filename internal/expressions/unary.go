@@ -9,8 +9,8 @@ import (
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
-func unary(defs node.Definitions, expr *ast.UnaryExpr) (node.Node, error) {
-	value, err := resolve(defs, expr.X)
+func (s *Source) unary(defs node.Definitions, expr *ast.UnaryExpr) (node.Node, error) {
+	value, err := s.resolve(defs, expr.X)
 	if err != nil {
 		return nil, err
 	}
@@ -19,7 +19,7 @@ func unary(defs node.Definitions, expr *ast.UnaryExpr) (node.Node, error) {
 	case token.NOT:
 		ok, _ := value.Bool()
 
-		return node.Bool(!ok), nil
+		return node.NewBool(s.pos, !ok), nil
 	default:
 		return nil, fmt.Errorf("%q: %w in unary expression", expr.Op.String(), errors.ErrUnsupportedOperator)
 	}

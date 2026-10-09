@@ -1,9 +1,9 @@
 package node
 
 import (
-	"errors"
-
 	"go.yaml.in/yaml/v4"
+
+	"github.com/willoma/yaml2yaml/internal/errors"
 )
 
 type (
@@ -20,11 +20,35 @@ type (
 	}
 )
 
-func (m MappingEntrySource) Process(defs Definitions) (Node, error) {
-	key, kErr := m.Key.Process(defs)
-	value, vErr := m.Value.Process(defs)
+func NewMappingEntrySource(key, value Source) *MappingEntrySource {
+	return &MappingEntrySource{
+		Key:   key,
+		Value: value,
+	}
+}
 
-	return MappingEntry{Key: key, Value: value}, errors.Join(kErr, vErr)
+func (m *MappingEntrySource) Pos() [2]int {
+	return m.Key.Pos()
+}
+
+func (m *MappingEntrySource) String() string {
+	return m.Key.String()
+}
+
+func (m *MappingEntrySource) Process(defs Definitions) (Node, error) {
+	errs := errors.NewJoined()
+
+	key, err := m.Key.Process(defs)
+	errs.Add(err)
+
+	value, err := m.Value.Process(defs)
+	errs.Add(err)
+
+	if err := errs.Compact(); err != nil {
+		return nil, err
+	}
+
+	return MappingEntry{Key: key, Value: value}, nil
 }
 
 func (m MappingEntry) Bool() (value, ok bool) {
@@ -40,7 +64,7 @@ func (m MappingEntry) Float() (float64, bool) {
 }
 
 func (m MappingEntry) String() string {
-	return m.Key.String() + ": " + m.Value.String()
+	return m.Key.String()
 }
 
 func (m MappingEntry) Equals(other Node) bool {

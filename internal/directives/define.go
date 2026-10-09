@@ -16,6 +16,14 @@ func Define(name, value node.Source) *dirDefine {
 	return &dirDefine{name: name, value: value}
 }
 
+func (d *dirDefine) Pos() [2]int {
+	return d.name.Pos()
+}
+
+func (d *dirDefine) String() string {
+	return NameDefine + " " + d.name.String()
+}
+
 func (d *dirDefine) Process(defs node.Definitions) (node.Node, error) {
 	nameNode, err := d.name.Process(defs)
 	if err != nil {

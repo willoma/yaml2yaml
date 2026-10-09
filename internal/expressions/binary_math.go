@@ -8,45 +8,45 @@ import (
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
-func binMath(left, right node.Node, op token.Token) (node.Node, error) {
+func (s *Source) binMath(left, right node.Node, op token.Token) (node.Node, error) {
 	if lseq, ok := left.(node.Sequence); ok {
 		if rseq, ok := right.(node.Sequence); ok {
-			return mathSequences(lseq, rseq, op)
+			return s.mathSequences(lseq, rseq, op)
 		}
 	}
 
 	if lmap, ok := left.(node.Mapping); ok {
 		if rmap, ok := right.(node.Mapping); ok {
-			return mathMappings(lmap, rmap, op)
+			return s.mathMappings(lmap, rmap, op)
 		}
 	}
 
 	if lbin, ok := left.(node.Binary); ok {
 		if rbin, ok := right.(node.Binary); ok {
-			return mathBinaries(lbin, rbin, op)
+			return s.mathBinaries(lbin, rbin, op)
 		}
 	}
 
 	if lint, ok := left.Int(); ok {
 		if rint, ok := right.Int(); ok {
-			return node.Int(mathInts(lint, rint, op)), nil
+			return s.mathInts(lint, rint, op), nil
 		}
 	}
 
 	if lfloat, ok := left.Float(); ok {
 		if rfloat, ok := right.Float(); ok {
-			result, err := mathFloats(lfloat, rfloat, op)
+			result, err := s.mathFloats(lfloat, rfloat, op)
 
-			return node.Float(result), err
+			return node.NewFloat(s.pos, result), err
 		}
 	}
 
-	result, err := mathStrings(left.String(), right.String(), op)
+	result, err := s.mathStrings(left.String(), right.String(), op)
 
-	return node.String(result), err
+	return node.NewString(s.pos, result), err
 }
 
-func mathSequences(left, right node.Sequence, op token.Token) (node.Node, error) {
+func (s *Source) mathSequences(left, right node.Sequence, op token.Token) (node.Node, error) {
 	if op == token.ADD {
 		result := make(node.Sequence, 0, len(left)+len(right))
 		result = append(result, left...)
@@ -58,7 +58,7 @@ func mathSequences(left, right node.Sequence, op token.Token) (node.Node, error)
 	return left, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithSequences)
 }
 
-func mathMappings(left, right node.Mapping, op token.Token) (node.Node, error) {
+func (s *Source) mathMappings(left, right node.Mapping, op token.Token) (node.Node, error) {
 	if op == token.ADD {
 		result, err := left.Merge(right)
 
@@ -68,24 +68,24 @@ func mathMappings(left, right node.Mapping, op token.Token) (node.Node, error) {
 	return left, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithMaps)
 }
 
-func mathInts(left, right int64, op token.Token) int64 {
+func (s *Source) mathInts(left, right int64, op token.Token) node.Int {
 	switch op {
 	case token.ADD:
-		return left + right
+		return node.NewInt(s.pos, left+right)
 	case token.SUB:
-		return left - right
+		return node.NewInt(s.pos, left-right)
 	case token.MUL:
-		return left * right
+		return node.NewInt(s.pos, left*right)
 	case token.QUO:
-		return left / right
+		return node.NewInt(s.pos, left/right)
 	case token.REM:
-		return left % right
+		return node.NewInt(s.pos, left%right)
 	default:
-		return 0
+		return node.NewInt(s.pos, 0)
 	}
 }
 
-func mathFloats(left, right float64, op token.Token) (float64, error) {
+func (s *Source) mathFloats(left, right float64, op token.Token) (float64, error) {
 	switch op {
 	case token.ADD:
 		return left + right, nil
@@ -100,7 +100,7 @@ func mathFloats(left, right float64, op token.Token) (float64, error) {
 	}
 }
 
-func mathStrings(left, right string, op token.Token) (string, error) {
+func (s *Source) mathStrings(left, right string, op token.Token) (string, error) {
 	switch op {
 	case token.ADD:
 		return left + right, nil
@@ -109,11 +109,11 @@ func mathStrings(left, right string, op token.Token) (string, error) {
 	}
 }
 
-func mathBinaries(left, right node.Binary, op token.Token) (node.Binary, error) {
+func (s *Source) mathBinaries(left, right node.Binary, op token.Token) (node.Binary, error) {
 	switch op {
 	case token.ADD:
-		return append(left, right...), nil
+		return node.NewBinary(s.pos, append(left.Value, right.Value...)), nil
 	default:
-		return nil, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithBinaries)
+		return node.Binary{}, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithBinaries)
 	}
 }

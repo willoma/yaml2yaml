@@ -1,11 +1,12 @@
 package node
 
-import (
-	"go.yaml.in/yaml/v4"
-)
+import "go.yaml.in/yaml/v4"
 
 // Source is a parsed node source, before any yaml2yaml processing.
 type Source interface {
+	Pos() [2]int
+	String() string
+
 	Process(defs Definitions) (Node, error)
 }
 

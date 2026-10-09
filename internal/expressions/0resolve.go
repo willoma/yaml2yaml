@@ -9,20 +9,20 @@ import (
 )
 
 //nolint:funlen // Exhaustive switch on expression types.
-func resolve(defs node.Definitions, expr ast.Expr) (node.Node, error) {
+func (s *Source) resolve(defs node.Definitions, expr ast.Expr) (node.Node, error) {
 	// These are all the possible expression types, according to go/ast/ast.go.
 	switch expr := expr.(type) {
 	case *ast.BadExpr:
 		return nil, errors.ErrSyntaxError
 
 	case *ast.Ident:
-		return ident(defs, expr)
+		return s.ident(defs, expr)
 
 	case *ast.Ellipsis:
 		return nil, fmt.Errorf("ellipsis: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.BasicLit:
-		return basicLit(expr)
+		return s.basicLit(expr)
 
 	case *ast.FuncLit:
 		return nil, fmt.Errorf("function: %w", errors.ErrUnsupportedExpression)
@@ -31,10 +31,10 @@ func resolve(defs node.Definitions, expr ast.Expr) (node.Node, error) {
 		return nil, fmt.Errorf("composite: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.ParenExpr:
-		return resolve(defs, expr.X)
+		return s.resolve(defs, expr.X)
 
 	case *ast.SelectorExpr:
-		return selector(defs, expr)
+		return s.selector(defs, expr)
 
 		// 	case *ast.IndexExpr:
 		// 		return nil, fmt.Errorf("index expressions %w", errors.ErrNotImplemented)
@@ -55,10 +55,10 @@ func resolve(defs node.Definitions, expr ast.Expr) (node.Node, error) {
 		return nil, fmt.Errorf("pointer: %w", errors.ErrUnsupportedExpression)
 
 	case *ast.UnaryExpr:
-		return unary(defs, expr)
+		return s.unary(defs, expr)
 
 	case *ast.BinaryExpr:
-		return binary(defs, expr)
+		return s.binary(defs, expr)
 
 	case *ast.KeyValueExpr:
 		return nil, fmt.Errorf("key-value pair: %w", errors.ErrUnsupportedExpression)

@@ -16,17 +16,20 @@ type dirIf struct {
 }
 
 func If(condition, value node.Source) (node.Source, error) {
-	cond, ok := condition.(node.String)
-	if !ok {
-		return nil, fmt.Errorf("condition: %w", errors.ErrInvalidExpression)
-	}
-
-	expr, err := expressions.Parse(cond.String())
+	expr, err := expressions.Parse(condition.Pos(), condition.String())
 	if err != nil {
 		return nil, fmt.Errorf("condition: %w", err)
 	}
 
 	return &dirIf{condition: expr, value: value}, nil
+}
+
+func (i *dirIf) Pos() [2]int {
+	return i.condition.Pos()
+}
+
+func (i *dirIf) String() string {
+	return NameIf + " " + i.condition.String()
 }
 
 func (i *dirIf) Process(defs node.Definitions) (node.Node, error) {

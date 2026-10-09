@@ -8,21 +8,21 @@ import (
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
-func basicLit(expr *ast.BasicLit) (node.Node, error) {
+func (s *Source) basicLit(expr *ast.BasicLit) (node.Node, error) {
 	switch expr.Kind {
 	case token.INT:
 		if value, err := strconv.ParseInt(expr.Value, 10, 64); err == nil {
-			return node.Int(value), nil
+			return node.NewInt(s.pos, value), nil
 		}
 	case token.FLOAT:
 		if value, err := strconv.ParseFloat(expr.Value, 64); err == nil {
-			return node.Float(value), nil
+			return node.NewFloat(s.pos, value), nil
 		}
 	case token.CHAR, token.STRING:
 		if value, err := strconv.Unquote(expr.Value); err == nil {
-			return node.String(value), nil
+			return node.NewString(s.pos, value), nil
 		}
 	}
 
-	return node.String(expr.Value), nil
+	return node.NewString(s.pos, expr.Value), nil
 }
