@@ -20,5 +20,7 @@ vulncheck:
 dist/golangci-lint:
 	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b dist v$(GOLANGCILINT_VERSION)
 
-dist/yaml2yaml: *.go
+.SECONDEXPANSION:
+
+dist/yaml2yaml:  $$(addsuffix /*.go,$$(filter $(CURDIR)%,$$(shell go list -deps -f '{{.Dir}}' ./cmd/yaml2yaml)))
 	CGO_ENABLED=0 go build -o dist/yaml2yaml cmd/yaml2yaml/main.go
