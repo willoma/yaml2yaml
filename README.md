@@ -15,31 +15,41 @@ go install github.com/willoma/yaml2yaml/cmd/yaml2yaml@latest
 ## Usage
 
 ```
-yaml2yaml [input] [output]
+yaml2yaml [-i input] [-o output]
 ```
 
-- With no arguments, `yaml2yaml` reads from standard input and writes to
+- With no flags, `yaml2yaml` reads from standard input and writes to
   standard output.
-- With one argument, it reads from the given file and writes to standard output.
-- With two arguments, it reads from the first file and writes to the second.
+- `-input` (or `-i`) sets the file to read from.
+- `-output` (or `-o`) sets the file to write to.
 
 ```
-cat example.yaml | yaml2yaml > output.yaml
-yaml2yaml example.yaml output.yaml
+cat example/full.yaml | yaml2yaml > output.yaml
+yaml2yaml -i example/full.yaml -o output.yaml
 ```
 
-The output is always re-emitted with 2-space indentation.
+YAML anchors and aliases are resolved transparently. The output is always
+re-emitted with 2-space indentation.
 
 ## Directives
 
 Directives are written as YAML tags on mapping keys. yaml2yaml recognizes five
 special tags: `!define`, `!apply`, `!if`, `!for`, and `!include`.
 
+In `!define`, `!apply`, `!for`, and `!include` keys, the name or path may
+itself be an expression prefixed with `?`, resolved when the directive is
+processed.
+
+When several entries of a mapping produce the same key, the new value is
+merged into the existing one if it is a mapping (failing if the new value is
+not itself a mapping), and replaces it otherwise.
+
 ### `!define` — define a reusable value
 
 Binds a name to a value (scalar, sequence, or mapping). Definitions are scoped
-to the mapping that contains them and are inherited by child mappings. A name
-can only be defined once within a scope.
+to the mapping that contains them and are inherited by child mappings.
+Defining an already-defined name in the same scope replaces the previous
+definition.
 
 ```yaml
 !define majority: 18
@@ -55,6 +65,11 @@ templates:
   !define has: smell
 ```
 
+When a construct produces no output of its own — typically because it only
+contains `!define` directives — the definitions it created are propagated to
+the enclosing scope. This applies to `!if` bodies, applied templates, and
+included files as well as to regular mappings.
+
 ### `!apply` — apply a definition
 
 Expands a previously defined value inline. When the applied value is a mapping,
@@ -63,13 +78,14 @@ visible inside the template:
 
 ```yaml
 alice:
-  !apply looks: f        # "f" is bound to the name "_"
+  !apply looks: f   # "f" is bound to the name "_"
   !apply adult:
-    age: 34              # "age" is bound inside the "adult" template
+    age: 34         # "age" is bound inside the "adult" template
 ```
 
 When the argument is a single scalar or sequence, it is bound to the special
-name `_`. When the argument is a mapping, each key becomes a definition.
+name `_`. When the argument is a mapping, each plain `key: value` entry
+becomes a definition; directive entries are ignored.
 
 `!apply` can also be used as a scalar value (`key: !apply name`), in which case
 the value is replaced by the named definition.
@@ -77,14 +93,24 @@ the value is replaced by the named definition.
 Applying a name that is not defined is an error — unlike expressions, `!apply`
 requires the definition to exist.
 
+If the applied value produces no output — typically a template containing only
+`!define` directives — its definitions are propagated to the scope containing
+the `!apply` entry:
+
+```yaml
+!if _ == "m": !apply man   # "is" and "has" become defined in this scope
+```
+
 ### `!if` — conditional inclusion
 
 Includes its body only when the expression in the key is truthy. The
-expression uses the same syntax as inline expressions (see below), but is not
-restricted to booleans: `false`, `0`, `0.0`, `""`, empty sequences, empty
-mappings, and `nil` are falsy; any other value is truthy. An identifier that
-is not defined resolves to `nil`, so the condition simply evaluates to false
-instead of failing.
+expression uses the same syntax as inline expressions (see below), and the
+leading `?` is optional. Truthy values are `true`, positive numbers, strings
+that parse as `true` (such as `"true"`, `"1"`, or `"t"`), and non-empty
+sequences and mappings; everything else — `false`, zero and negative numbers,
+any other string, empty sequences and mappings, and binary data — is falsy.
+An identifier that is not defined produces no value, so the `!if` entry is
+simply skipped instead of failing.
 
 ```yaml
 !define looks:
@@ -94,11 +120,17 @@ instead of failing.
   !if _ == "m": !apply man
 ```
 
+A body that produces no output — typically one containing only `!define`
+directives — passes its definitions to the enclosing scope, as in the example
+above where `is` and `has` become defined in the `looks` template.
+
 ### `!for` — loop over a sequence
 
-Iterates over a previously defined sequence. If the name is not defined, the
-loop produces nothing and does not fail; if it is defined but is not a
-sequence, an error is reported. The body must be a mapping or a sequence.
+Iterates over a sequence. The key may be the name of a previously defined
+sequence, an expression resolving to such a name, or an inline sequence. If a
+name is not defined, the loop produces nothing and does not fail; if it is
+defined but is not a sequence, an error is reported. The body must be a
+mapping or a sequence.
 
 For each item, the zero-based index is bound to the name `i`. When the item
 is a mapping, each of its keys becomes a definition inside the loop body;
@@ -121,8 +153,10 @@ special name `_`.
 ### `!include` — include another file
 
 Loads another YAML file, processes it, and inlines the result in place of the
-directive. The path is relative to the current working directory, and the key
-may be an expression. An `!include` entry must not have a value.
+directive. A relative path is resolved against the directory of the file
+containing the directive — or against the current working directory when
+reading from standard input — and the key may be an expression. An `!include`
+entry does not use a value; any value provided is ignored.
 
 ```yaml
 !include common/definitions.yaml:
@@ -165,16 +199,14 @@ A bare identifier resolves to a definition by name, walking up the scope chain
 to parent mappings:
 
 ```yaml
-- ?year        # the "year" definition
-- ?majority    # the "majority" definition
+- ?year       # the "year" definition
+- ?majority   # the "majority" definition
 ```
 
-An identifier that is not defined resolves to `nil` without failing. `nil` is
-falsy, so `!if` conditions and the `&&`/`||` operators treat undefined values
-as `false`. In comparisons, `nil` never equals anything: `?undefined == x` is
-always `false` — even when `x` is itself undefined — while `?x != undefined`
-is `true` whenever `x` is defined. Used alone, a `nil` value is rendered as
-`<nil>`.
+`true` and `false` are boolean literals. An identifier that is not defined
+produces no value: the expression is considered empty and the entry containing
+it is omitted from the output instead of being rendered (in an `!if`
+condition, this simply skips the entry).
 
 The special name `_` refers to the current argument or loop item, and `i`
 refers to the current loop index.
@@ -184,16 +216,32 @@ refers to the current loop index.
 Selector expressions (`.`) access fields of a mapping value:
 
 ```yaml
-- ?color.base        # the "base" field of the current item
-- ?color.variant     # the "variant" field of the current item
+- ?color.base      # the "base" field of the current item
+- ?color.variant   # the "variant" field of the current item
 ```
 
-Accessing a field of a value that is not a mapping (including an undefined
-value) is an error.
+Accessing a field that does not exist produces no value. Accessing a field of
+a value that is not a mapping is an error.
+
+### Element access
+
+Index expressions (`[]`) access elements of a sequence:
+
+```yaml
+- ?colors[0]        # the first element
+- ?colors[0, 2]     # a sequence of the first and third elements
+- ?colors[1:3]      # a slice containing elements 1 and 2
+- ?colors[3].base   # indexing can be chained with field access
+```
+
+Indexes and slice bounds must be integers and are bounds-checked; out-of-range
+access is an error. In a slice, both bounds are required and the start must be
+strictly before the end.
 
 ### Literals
 
-Expressions support integer, float, and string literals using Go syntax:
+Expressions support integer, float, character, and string literals using Go
+syntax, plus the booleans `true` and `false`:
 
 ```yaml
 ?age + 1
@@ -205,23 +253,48 @@ Expressions support integer, float, and string literals using Go syntax:
 
 The following operators are supported:
 
-| Category   | Operators                   |
-| ---------- | --------------------------- |
-| Arithmetic | `+` `-` `*` `/` `%`         |
-| Comparison | `==` `!=` `<` `>` `<=` `>=` |
-| Logical    | `&&` `\|\|`                 |
+| Category   | Operators                        |
+| ---------- | -------------------------------- |
+| Arithmetic | `+`, `-`, `*`, `/`, `%`          |
+| Comparison | `==`, `!=`, `<`, `>`, `<=`, `>=` |
+| Logical    | `&&`, `\|\|`, `!`                |
 
-Arithmetic and comparison operators perform automatic type coercion between
-integers, floats, strings, booleans, and byte slices where it makes sense. For
-example, `+` concatenates strings and sequences, `*` repeats strings and
-sequences, and numeric strings are parsed when combined with numbers.
+Arithmetic:
+
+- `a + b` adds numbers, concatenates strings, sequences, and binary data, and
+  merges mappings. Adding a non-sequence value to a sequence appends it.
+- `a - b` and `a / b` subtract and divide integers and floats.
+- `a * b` multiplies integers and floats. When `b` is an integer, it instead
+  repeats a string, sequence, or binary `a` (`?"ab" * 3` produces `"ababab"`).
+- `a % b` is the remainder of an integer division.
+
+Comparison:
+
+- `a == b`, `a != b`, `a < b`, `a > b`, `a <= b`, `a >= b` compare integers,
+  floats, and strings.
+- Sequences and mappings are compared by length first, then element by
+  element; binary data is compared byte by byte.
+- Booleans only support the equality-style comparisons (`==`, `!=`, `<=`,
+  `>=`).
+
+Logical:
+
+- `a && b`, `a || b`, and `!a` operate on truthiness (see `!if` above).
+
+Arithmetic and comparison operators perform automatic type coercion: operands
+are tried in order as integers, floats, booleans, then strings, so numeric
+strings are parsed when combined with numbers (`?"5" * 3` produces `15`, not
+`"555"`).
+
+Parentheses can be used to group expressions.
 
 ## Example
 
-Given the input `example.yaml`, which includes `example.include.yaml`:
+Given the input `example/full.yaml`, which includes
+`example/full.include.yaml`:
 
 ```yaml
-# example.include.yaml
+# example/full.include.yaml
 !define majority: 18
 !define year: 2026
 !define man:
@@ -230,8 +303,8 @@ Given the input `example.yaml`, which includes `example.include.yaml`:
 ```
 
 ```yaml
-# example.yaml
-!include example.include.yaml:
+# example/full.yaml
+!include full.include.yaml:
 
 !define looks:
   !if _ == "f":
@@ -269,6 +342,10 @@ bob:
     variant: dark
   - base: green
     variant: medium
+  - base: yellow
+    variant: pastel
+  - base: grey
+    variant: light
 
 !for colors:
   ?variant + base:
@@ -280,11 +357,15 @@ colorslist:
     - name: ?variant + base
       base_color: ?base
 
+somecolors: ?colors[1:3]
+
+fourthcolor: ?colors[3].base
+
 !if colors:
   has_colors: true
 ```
 
-Running `yaml2yaml example.yaml` produces:
+Running `yaml2yaml -i example/full.yaml` produces:
 
 ```yaml
 alice:
@@ -310,6 +391,12 @@ darkblue:
 mediumgreen:
   rank: 2
   base_color: green
+pastelyellow:
+  rank: 3
+  base_color: yellow
+lightgrey:
+  rank: 4
+  base_color: grey
 colorslist:
   - name: lightred
     base_color: red
@@ -317,6 +404,16 @@ colorslist:
     base_color: blue
   - name: mediumgreen
     base_color: green
+  - name: pastelyellow
+    base_color: yellow
+  - name: lightgrey
+    base_color: grey
+somecolors:
+  - base: blue
+    variant: dark
+  - base: green
+    variant: medium
+fourthcolor: yellow
 has_colors: true
 ```
 
@@ -334,11 +431,14 @@ Three entry points are available:
 
 - `yaml2yaml.ProcessBytes(src []byte) ([]byte, error)` parses the input YAML,
   processes all directives and expressions, and returns the resulting YAML
-  bytes.
+  bytes. `!include` paths are resolved against the current working directory.
 - `yaml2yaml.ProcessFile(path string) ([]byte, error)` does the same starting
-  from a file path.
-- `yaml2yaml.Process(src *yaml.Node) (*yaml.Node, error)` is the lower-level
-  entry point, operating directly on `yaml.Node` values.
+  from a file path; `!include` paths are resolved relative to that file's
+  directory.
+- `yaml2yaml.Process(basePath string, src *yaml.Node) (*yaml.Node, error)` is
+  the lower-level entry point, operating directly on `yaml.Node` values; the
+  `basePath` argument is the directory against which relative `!include`
+  paths are resolved.
 
 ## License
 
