@@ -61,7 +61,7 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 	for i, item := range seq.Value {
 		childDefs := defsWithArgs(defs, item)
 
-		childDefs.Set("i", node.NewInt(f.sequence.Pos(), int64(i)))
+		childDefs.args["i"] = node.NewInt(f.sequence.Pos(), int64(i))
 
 		childResult, err := f.value.Process(childDefs)
 		if err != nil {
