@@ -49,7 +49,7 @@ func parseSequence(basePath string, src *yaml.Node) (*node.SequenceSource, error
 	for i, child := range src.Content {
 		childNode, err := parseNode(basePath, child)
 		if err != nil {
-			errs.Add(errors.Locate("["+strconv.Itoa(i)+"]", pos(src), err))
+			errs.Add(errors.LocateByIndex(i, pos(src), err))
 
 			continue
 		}

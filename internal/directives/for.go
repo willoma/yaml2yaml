@@ -65,7 +65,7 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 
 		childResult, err := f.value.Process(childDefs)
 		if err != nil {
-			errs.Add(err)
+			errs.Add(errors.LocateByIndex(i, f.value.Pos(), err))
 
 			continue
 		}

@@ -2,11 +2,14 @@ package errors
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
 type located struct {
-	key    string
+	index int
+	key   string
+
 	line   int
 	column int
 	err    error
@@ -33,16 +36,20 @@ func (e *located) error(parentPath string) string {
 }
 
 func (e *located) combinePath(parent string) string {
+	if e.key == "" {
+		return e.combinePathIndex(parent)
+	}
+
+	return e.combinePathKey(parent)
+}
+
+func (e *located) combinePathIndex(parent string) string {
+	return parent + "[" + strconv.Itoa(e.index) + "]"
+}
+
+func (e *located) combinePathKey(parent string) string {
 	if parent == "" {
 		return e.key
-	}
-
-	if e.key == "" {
-		return parent + "..."
-	}
-
-	if e.key[0] == '[' {
-		return parent + e.key
 	}
 
 	return parent + "." + e.key
@@ -63,7 +70,12 @@ func (e *located) prefix(path string) string {
 	}
 }
 
-// Locate wraps an error with location information.
-func Locate(key string, pos [2]int, err error) error {
+// LocateByIndex wraps an error with location information.
+func LocateByIndex(index int, pos [2]int, err error) error {
+	return &located{index: index, line: pos[0], column: pos[1], err: err}
+}
+
+// LocateByKey wraps an error with location information.
+func LocateByKey(key string, pos [2]int, err error) error {
 	return &located{key: key, line: pos[0], column: pos[1], err: err}
 }

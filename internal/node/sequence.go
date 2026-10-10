@@ -54,7 +54,7 @@ func (s *SequenceSource) Process(defs Definitions) (Node, error) {
 	for i, item := range s.Value {
 		processed, err := item.Process(defs)
 		if err != nil {
-			errs.Add(errors.Locate("["+strconv.Itoa(i)+"]", s.pos, err))
+			errs.Add(errors.LocateByIndex(i, s.pos, err))
 
 			continue
 		}

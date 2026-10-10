@@ -59,7 +59,7 @@ func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
 	for _, item := range m.Value {
 		itemResult, err := item.Process(defs)
 		if err != nil {
-			errs.Add(errors.Locate(item.String(), item.Pos(), err))
+			errs.Add(errors.LocateByKey(item.String(), item.Pos(), err))
 
 			continue
 		}
@@ -89,7 +89,7 @@ func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
 	for _, child := range processed {
 		result, err = result.Merge(child.value)
 		if err != nil {
-			errs.Add(errors.Locate(child.src.String(), child.src.Pos(), err))
+			errs.Add(errors.LocateByKey(child.src.String(), child.src.Pos(), err))
 
 			continue
 		}
