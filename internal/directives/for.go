@@ -70,8 +70,7 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 			continue
 		}
 
-		result, err = result.Merge(childResult)
-		errs.Add(err)
+		result = append(result, childResult)
 	}
 
 	return result, errs.Compact()

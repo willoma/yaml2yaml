@@ -1,7 +1,6 @@
 package node
 
 import (
-	"strconv"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
@@ -23,14 +22,6 @@ func NewSequenceSource(pos [2]int, length int) *SequenceSource {
 		pos:   pos,
 		Value: make([]Source, 0, length),
 	}
-}
-
-func (s *SequenceSource) Append(src Source) {
-	s.Value = append(s.Value, src)
-}
-
-func (s *SequenceSource) Length() int {
-	return len(s.Value)
 }
 
 func (s *SequenceSource) Pos() [2]int {

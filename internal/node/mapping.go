@@ -30,14 +30,6 @@ func NewMappingSource(pos [2]int, length int) *MappingSource {
 	}
 }
 
-func (m *MappingSource) Append(src Source) {
-	m.Value = append(m.Value, src)
-}
-
-func (m *MappingSource) Length() int {
-	return len(m.Value)
-}
-
 func (m *MappingSource) Pos() [2]int {
 	return m.pos
 }

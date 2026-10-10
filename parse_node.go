@@ -43,7 +43,6 @@ func parseWithoutTag(basePath string, src *yaml.Node) (node.Source, error) {
 
 func parseSequence(basePath string, src *yaml.Node) (*node.SequenceSource, error) {
 	result := node.NewSequenceSource(pos(src), len(src.Content))
-
 	errs := errors.NewJoined()
 
 	for i, child := range src.Content {
@@ -54,7 +53,7 @@ func parseSequence(basePath string, src *yaml.Node) (*node.SequenceSource, error
 			continue
 		}
 
-		result.Append(childNode)
+		result.Value = append(result.Value, childNode)
 	}
 
 	if err := errs.Compact(); err != nil {
@@ -90,7 +89,7 @@ func parseMapping(basePath string, src *yaml.Node) (*node.MappingSource, error) 
 			continue
 		}
 
-		result.Append(entry)
+		result.Value = append(result.Value, entry)
 	}
 
 	return result, errs.Compact()
