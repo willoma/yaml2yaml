@@ -35,7 +35,7 @@ func (m *MappingSource) Pos() [2]int {
 }
 
 func (m *MappingSource) String() string {
-	result := make([]string, 0, len(m.Value))
+	result := make([]string, len(m.Value))
 	for i, item := range m.Value {
 		result[i] = item.String()
 	}
@@ -107,7 +107,7 @@ func (m Mapping) Binary() ([]byte, bool) {
 }
 
 func (m Mapping) String() string {
-	result := make([]string, 0, len(m))
+	result := make([]string, len(m))
 	for i, item := range m {
 		result[i] = item.String()
 	}
