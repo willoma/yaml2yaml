@@ -73,5 +73,13 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 		result = append(result, childResult)
 	}
 
-	return result, errs.Compact()
+	if err := errs.Compact(); err != nil {
+		return nil, err
+	}
+
+	if len(result) == 0 {
+		return nil, errors.ErrEmpty
+	}
+
+	return result, nil
 }
