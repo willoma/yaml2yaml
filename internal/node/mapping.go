@@ -20,6 +20,7 @@ type (
 	processedMappingEntry struct {
 		src   Source
 		value Node
+		err   error
 	}
 )
 
@@ -28,6 +29,14 @@ func NewMappingSource(pos [2]int, length int) *MappingSource {
 		pos:   pos,
 		Value: make([]Source, 0, length),
 	}
+}
+
+func (p processedMappingEntry) LocateOwnError() error {
+	return errors.LocateByKey(p.src.String(), p.src.Pos(), p.err)
+}
+
+func (p processedMappingEntry) LocateError(err error) error {
+	return errors.LocateByKey(p.src.String(), p.src.Pos(), err)
 }
 
 func (m *MappingSource) Pos() [2]int {
@@ -44,50 +53,75 @@ func (m *MappingSource) String() string {
 }
 
 func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
-	errs := errors.NewJoined()
 	defs := childDefs(parentDefs)
 	processed := make([]processedMappingEntry, 0, len(m.Value))
 
+	var mappingsCount, othersCount, sequencesCount int
+
 	for _, item := range m.Value {
 		itemResult, err := item.Process(defs)
-		if err != nil {
-			errs.Add(errors.LocateByKey(item.String(), item.Pos(), err))
-
-			continue
+		if err == nil {
+			switch itemResult.(type) {
+			case Mapping, MappingEntry:
+				mappingsCount++
+			case Sequence:
+				sequencesCount++
+			default:
+				othersCount++
+			}
 		}
 
-		processed = append(processed, processedMappingEntry{item, itemResult})
+		processed = append(processed, processedMappingEntry{item, itemResult, err})
+	}
+
+	errs := errors.NewJoined()
+
+	var result Node
+
+	switch {
+	case mappingsCount > 0:
+		result = m.postprocess(Mapping{}, processed, errs)
+	// result = m.postprocessMappings(processed, errs)
+	case sequencesCount > 0:
+		result = m.postprocess(Sequence{}, processed, errs)
+	// result = m.postprocessSequences(processed, errs)
+	case othersCount > 0:
+		result = m.postprocess(Bool{}, processed, errs)
+	default:
+		// No content, ignore the result, that would not have changed and we need to ignore...
+		m.postprocess(Bool{}, processed, errs)
+		defs.passToParent()
 	}
 
 	if err := errs.Compact(); err != nil {
 		return nil, err
 	}
 
-	switch len(processed) {
-	case 0:
-		// No children, pass definitions to parent and ignore the mapping altogether.
-		defs.passToParent()
-
+	if result == nil {
 		return nil, errors.ErrEmpty
-	case 1:
-		return processed[0].value, nil
 	}
 
-	var (
-		result Node = Mapping{}
-		err    error
-	)
+	return result, nil
+}
 
-	for _, child := range processed {
-		result, err = result.Merge(child.value)
-		if err != nil {
-			errs.Add(errors.LocateByKey(child.src.String(), child.src.Pos(), err))
+func (m *MappingSource) postprocess(node Node, processed []processedMappingEntry, errs *errors.Joined) Node {
+	var err error
+
+	for _, entry := range processed {
+		if entry.err != nil {
+			errs.Add(entry.LocateOwnError())
 
 			continue
 		}
+
+		node, err = node.Merge(entry.value)
+		if err != nil {
+			errs.Add(entry.LocateError(err))
+		}
 	}
 
-	return result, errs.Compact()
+	return node
+
 }
 
 func (m Mapping) Bool() (value, ok bool) {
