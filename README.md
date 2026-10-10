@@ -129,8 +129,11 @@ above where `is` and `has` become defined in the `looks` template.
 Iterates over a sequence. The key may be the name of a previously defined
 sequence, an expression resolving to such a name, or an inline sequence. If a
 name is not defined, the loop produces nothing and does not fail; if it is
-defined but is not a sequence, an error is reported. The body must be a
-mapping or a sequence.
+defined but is not a sequence, an error is reported. If the body is a mapping,
+the result will be a mapping, merging the result of the loop calculation.
+If the body is a sequence, the result will be a sequence, joining all
+calculated sequences. If the body is a scalar, the result will be a sequence,
+containing all calculated scalars
 
 For each item, the zero-based index is bound to the name `i`. When the item
 is a mapping, each of its keys becomes a definition inside the loop body;

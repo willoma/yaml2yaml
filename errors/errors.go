@@ -14,7 +14,6 @@ var (
 	ErrNotABinary                    = errors.New("not a binary")
 	ErrNotAMapping                   = errors.New("not a mapping")
 	ErrNotAMappingEntry              = errors.New("not a mapping entry")
-	ErrNotAMappingOrSequence         = errors.New("not a mapping or sequence")
 	ErrNotANumber                    = errors.New("not a number")
 	ErrNotAPath                      = errors.New("not a path")
 	ErrNotASequence                  = errors.New("not a sequence")

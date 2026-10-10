@@ -45,16 +45,18 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 		}
 	}
 
-	var result node.Node
-
 	switch value := f.value.(type) {
 	case *node.SequenceSource:
-		result = make(node.Sequence, 0, len(seq.Value)*len(value.Value))
+		return f.process[node.Sequence](defs, seq, make(node.Sequence, 0, len(seq.Value)*len(value.Value)))
 	case *node.MappingSource:
-		result = make(node.Mapping, 0, len(seq.Value)*len(value.Value))
+		return f.process[node.Mapping](defs, seq, make(node.Mapping, 0, len(seq.Value)*len(value.Value)))
 	default:
-		return nil, fmt.Errorf(`content: %w`, errors.ErrNotAMappingOrSequence)
+		return f.process[node.Sequence](defs, seq, make(node.Sequence, 0, len(seq.Value)))
 	}
+}
+
+func (f *dirFor) process[T node.Mapping | node.Sequence](defs node.Definitions, seq *node.SequenceSource, initial node.Node) (node.Node, error) {
+	result := initial
 
 	errs := errors.NewJoined()
 
@@ -70,7 +72,10 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 			continue
 		}
 
-		result = append(result, childResult)
+		result, err = result.Merge(childResult)
+		if err != nil {
+			errs.Add(errors.LocateByIndex(i, f.value.Pos(), err))
+		}
 	}
 
 	if err := errs.Compact(); err != nil {
