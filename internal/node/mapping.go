@@ -81,14 +81,12 @@ func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
 	switch {
 	case mappingsCount > 0:
 		result = m.postprocess(Mapping{}, processed, errs)
-	// result = m.postprocessMappings(processed, errs)
 	case sequencesCount > 0:
 		result = m.postprocess(Sequence{}, processed, errs)
-	// result = m.postprocessSequences(processed, errs)
 	case othersCount > 0:
 		result = m.postprocess(Bool{}, processed, errs)
 	default:
-		// No content, ignore the result, that would not have changed and we need to ignore...
+		// No content: ignore the result, it would not have changed anyway...
 		m.postprocess(Bool{}, processed, errs)
 		defs.passToParent()
 	}
@@ -121,7 +119,6 @@ func (m *MappingSource) postprocess(node Node, processed []processedMappingEntry
 	}
 
 	return node
-
 }
 
 func (m Mapping) Bool() (value, ok bool) {

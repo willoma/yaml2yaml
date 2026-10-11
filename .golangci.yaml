@@ -62,7 +62,7 @@ linters:
         - ok bool
     wrapcheck:
       ignore-package-globs:
-        - github.com/willoma/yaml2yaml/internal/*
+        - github.com/willoma/yaml2yaml/*
 
 formatters:
   enable:
