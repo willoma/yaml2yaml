@@ -83,7 +83,7 @@ func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
 	case othersCount > 0:
 		result, errs = m.postprocess(Bool{}, processed)
 	default:
-		result, errs = m.postprocess(Bool{}, processed)
+		_, errs = m.postprocess(Bool{}, processed)
 
 		defs.passToParent()
 	}
