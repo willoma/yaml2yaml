@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"math"
 	"strconv"
+	"strings"
 
 	"go.yaml.in/yaml/v4"
 )
@@ -250,7 +251,21 @@ func (s String) Merge(other Node) (Node, error) {
 }
 
 func (s String) ToYAML() *yaml.Node {
-	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: s.value}
+	return &yaml.Node{Kind: yaml.ScalarNode, Style: s.style(), Tag: "!!str", Value: s.value}
+}
+
+func (s String) style() yaml.Style {
+	// Preserve YAML 1.1 compatibility for output format.
+	if s.value == "on" || s.value == "off" {
+		return yaml.SingleQuotedStyle
+	}
+
+	// Make multi-line strings easier to read
+	if strings.Contains(s.value, "\n") {
+		return yaml.LiteralStyle
+	}
+
+	return 0
 }
 
 func NewBinary(pos [2]int, value []byte) Binary {
