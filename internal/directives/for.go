@@ -47,15 +47,15 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 
 	switch value := f.value.(type) {
 	case *node.SequenceSource:
-		return f.process[node.Sequence](defs, seq, make(node.Sequence, 0, len(seq.Value)*len(value.Value)))
+		return f.process(defs, seq, make(node.Sequence, 0, len(seq.Value)*len(value.Value)))
 	case *node.MappingSource:
-		return f.process[node.Mapping](defs, seq, make(node.Mapping, 0, len(seq.Value)*len(value.Value)))
+		return f.process(defs, seq, make(node.Mapping, 0, len(seq.Value)*len(value.Value)))
 	default:
-		return f.process[node.Sequence](defs, seq, make(node.Sequence, 0, len(seq.Value)))
+		return f.process(defs, seq, make(node.Sequence, 0, len(seq.Value)))
 	}
 }
 
-func (f *dirFor) process[T node.Mapping | node.Sequence](defs node.Definitions, seq *node.SequenceSource, initial node.Node) (node.Node, error) {
+func (f *dirFor) process(defs node.Definitions, seq *node.SequenceSource, initial node.Node) (node.Node, error) {
 	result := initial
 
 	errs := errors.NewJoined()
@@ -82,8 +82,15 @@ func (f *dirFor) process[T node.Mapping | node.Sequence](defs node.Definitions, 
 		return nil, err
 	}
 
-	if len(result) == 0 {
-		return nil, errors.ErrEmpty
+	switch result := result.(type) {
+	case node.Mapping:
+		if len(result) == 0 {
+			return nil, errors.ErrEmpty
+		}
+	case node.Sequence:
+		if len(result) == 0 {
+			return nil, errors.ErrEmpty
+		}
 	}
 
 	return result, nil
