@@ -1,6 +1,7 @@
 package directives
 
 import (
+	oerrors "errors"
 	"fmt"
 
 	"github.com/willoma/yaml2yaml/errors"
@@ -43,7 +44,7 @@ func (a *dirApply) Process(defs node.Definitions) (node.Node, error) {
 
 	result, err := def.Process(childDefs)
 	if err != nil {
-		if errors.IsEmpty(err) {
+		if oerrors.Is(err, errors.ErrEmpty) {
 			childDefs.passToParent()
 		}
 

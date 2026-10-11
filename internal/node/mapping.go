@@ -31,10 +31,6 @@ func NewMappingSource(pos [2]int, length int) *MappingSource {
 	}
 }
 
-func (p processedMappingEntry) LocateOwnError() error {
-	return errors.LocateByKey(p.src.String(), p.src.Pos(), p.err)
-}
-
 func (p processedMappingEntry) LocateError(err error) error {
 	return errors.LocateByKey(p.src.String(), p.src.Pos(), err)
 }
@@ -74,20 +70,21 @@ func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
 		processed = append(processed, processedMappingEntry{item, itemResult, err})
 	}
 
-	errs := errors.NewJoined()
-
-	var result Node
+	var (
+		errs   errors.JoinedError
+		result Node
+	)
 
 	switch {
 	case mappingsCount > 0:
-		result = m.postprocess(Mapping{}, processed, errs)
+		result, errs = m.postprocess(Mapping{}, processed)
 	case sequencesCount > 0:
-		result = m.postprocess(Sequence{}, processed, errs)
+		result, errs = m.postprocess(Sequence{}, processed)
 	case othersCount > 0:
-		result = m.postprocess(Bool{}, processed, errs)
+		result, errs = m.postprocess(Bool{}, processed)
 	default:
-		// No content: ignore the result, it would not have changed anyway...
-		m.postprocess(Bool{}, processed, errs)
+		result, errs = m.postprocess(Bool{}, processed)
+
 		defs.passToParent()
 	}
 
@@ -102,23 +99,26 @@ func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
 	return result, nil
 }
 
-func (m *MappingSource) postprocess(node Node, processed []processedMappingEntry, errs *errors.Joined) Node {
-	var err error
+func (m *MappingSource) postprocess(node Node, processed []processedMappingEntry) (Node, errors.JoinedError) {
+	var (
+		errs errors.JoinedError
+		err  error
+	)
 
 	for _, entry := range processed {
 		if entry.err != nil {
-			errs.Add(entry.LocateOwnError())
+			errs = errs.Append(entry.LocateError(entry.err))
 
 			continue
 		}
 
 		node, err = node.Merge(entry.value)
 		if err != nil {
-			errs.Add(entry.LocateError(err))
+			errs = errs.Append(entry.LocateError(err))
 		}
 	}
 
-	return node
+	return node, errs
 }
 
 func (m Mapping) Bool() (value, ok bool) {
@@ -159,11 +159,13 @@ func (m Mapping) Merge(other Node) (Node, error) {
 	case MappingEntry:
 		return m.addEntry(other)
 	case Mapping:
-		errs := errors.NewJoined()
+		var errs errors.JoinedError
 
 		for _, child := range other {
 			newM, err := m.Merge(child)
-			errs.Add(err)
+			if err != nil {
+				errs = errs.Append(err)
+			}
 
 			//nolint:forcetypeassert // The result of [Mapping.Merge] is always a [Mapping].
 			m = newM.(Mapping)

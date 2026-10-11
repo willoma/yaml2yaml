@@ -36,13 +36,17 @@ func (m *MappingEntrySource) String() string {
 }
 
 func (m *MappingEntrySource) Process(defs Definitions) (Node, error) {
-	errs := errors.NewJoined()
+	var errs errors.JoinedError
 
 	key, err := m.Key.Process(defs)
-	errs.Add(err)
+	if err != nil {
+		errs = errs.Append(err)
+	}
 
 	value, err := m.Value.Process(defs)
-	errs.Add(err)
+	if err != nil {
+		errs = errs.Append(err)
+	}
 
 	if err := errs.Compact(); err != nil {
 		return nil, err

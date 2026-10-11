@@ -27,38 +27,14 @@ func (f *dirFor) String() string {
 }
 
 func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
-	seq, ok := f.sequence.(*node.SequenceSource)
-	if !ok {
-		seqNode, err := f.sequence.Process(defs)
-		if err != nil {
-			return nil, fmt.Errorf("sequence: %w", err)
-		}
-
-		defNode := defs.Get(seqNode.String())
-		if defNode == nil {
-			return nil, fmt.Errorf("sequence: %w", errors.ErrEmpty)
-		}
-
-		seq, ok = defNode.(*node.SequenceSource)
-		if !ok {
-			return nil, fmt.Errorf(`sequence: %w`, errors.ErrNotASequence)
-		}
+	seq, err := f.processSeq(defs)
+	if err != nil {
+		return nil, fmt.Errorf("sequence: %w", err)
 	}
 
-	switch value := f.value.(type) {
-	case *node.SequenceSource:
-		return f.process(defs, seq, make(node.Sequence, 0, len(seq.Value)*len(value.Value)))
-	case *node.MappingSource:
-		return f.process(defs, seq, make(node.Mapping, 0, len(seq.Value)*len(value.Value)))
-	default:
-		return f.process(defs, seq, make(node.Sequence, 0, len(seq.Value)))
-	}
-}
+	result := f.initialResult(seq)
 
-func (f *dirFor) process(defs node.Definitions, seq *node.SequenceSource, initial node.Node) (node.Node, error) {
-	result := initial
-
-	errs := errors.NewJoined()
+	var errs errors.JoinedError
 
 	for i, item := range seq.Value {
 		childDefs := defsWithArgs(defs, item)
@@ -67,14 +43,14 @@ func (f *dirFor) process(defs node.Definitions, seq *node.SequenceSource, initia
 
 		childResult, err := f.value.Process(childDefs)
 		if err != nil {
-			errs.Add(errors.LocateByIndex(i, f.value.Pos(), err))
+			errs = errs.Append(errors.LocateByIndex(i, f.value.Pos(), err))
 
 			continue
 		}
 
 		result, err = result.Merge(childResult)
 		if err != nil {
-			errs.Add(errors.LocateByIndex(i, f.value.Pos(), err))
+			errs = errs.Append(errors.LocateByIndex(i, f.value.Pos(), err))
 		}
 	}
 
@@ -94,4 +70,38 @@ func (f *dirFor) process(defs node.Definitions, seq *node.SequenceSource, initia
 	}
 
 	return result, nil
+}
+
+func (f *dirFor) processSeq(defs node.Definitions) (*node.SequenceSource, error) {
+	if seq, ok := f.sequence.(*node.SequenceSource); ok {
+		return seq, nil
+	}
+
+	name, err := f.sequence.Process(defs)
+	if err != nil {
+		return nil, err
+	}
+
+	defNode := defs.Get(name.String())
+	if defNode == nil {
+		return nil, errors.ErrEmpty
+	}
+
+	seq, ok := defNode.(*node.SequenceSource)
+	if !ok {
+		return nil, errors.ErrNotASequence
+	}
+
+	return seq, nil
+}
+
+func (f *dirFor) initialResult(seq *node.SequenceSource) node.Node {
+	switch value := f.value.(type) {
+	case *node.SequenceSource:
+		return make(node.Sequence, 0, len(seq.Value)*len(value.Value))
+	case *node.MappingSource:
+		return make(node.Mapping, 0, len(seq.Value)*len(value.Value))
+	default:
+		return make(node.Sequence, 0, len(seq.Value))
+	}
 }

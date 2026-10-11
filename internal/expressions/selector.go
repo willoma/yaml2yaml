@@ -9,15 +9,19 @@ import (
 )
 
 func (s *Source) selector(defs node.Definitions, expr *ast.SelectorExpr) (node.Node, error) {
-	errs := errors.NewJoined()
+	var errs errors.JoinedError
 
 	value, err := s.resolve(defs, expr.X)
 	if err != nil {
-		errs.Add(fmt.Errorf("expression: %w", err))
+		errs = errs.Append(fmt.Errorf("expression: %w", err))
 	}
 
 	if expr.Sel == nil {
-		return nil, fmt.Errorf("selector: %w", errors.ErrEmpty)
+		errs = errs.Append(fmt.Errorf("selector: %w", errors.ErrEmpty))
+	}
+
+	if err := errs.Compact(); err != nil {
+		return nil, err
 	}
 
 	xMap, ok := value.(node.Mapping)

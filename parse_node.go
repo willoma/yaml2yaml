@@ -42,13 +42,14 @@ func parseWithoutTag(basePath string, src *yaml.Node) (node.Source, error) {
 }
 
 func parseSequence(basePath string, src *yaml.Node) (*node.SequenceSource, error) {
+	var errs errors.JoinedError
+
 	result := node.NewSequenceSource(pos(src), len(src.Content))
-	errs := errors.NewJoined()
 
 	for i, child := range src.Content {
 		childNode, err := parseNode(basePath, child)
 		if err != nil {
-			errs.Add(errors.LocateByIndex(i, pos(src), err))
+			errs = errs.Append(errors.LocateByIndex(i, pos(src), err))
 
 			continue
 		}
@@ -70,21 +71,21 @@ func parseSequence(basePath string, src *yaml.Node) (*node.SequenceSource, error
 func parseMapping(basePath string, src *yaml.Node) (*node.MappingSource, error) {
 	result := node.NewMappingSource(pos(src), len(src.Content)/2)
 
-	errs := errors.NewJoined()
+	var errs errors.JoinedError
 
 	for i := 0; i < len(src.Content); i += 2 {
 		keyNode := src.Content[i]
 
 		value, err := parseNode(basePath, src.Content[i+1])
 		if err != nil {
-			errs.Add(locateMappingEntryError(i, basePath, keyNode, err))
+			errs = errs.Append(locateMappingEntryError(i, basePath, keyNode, err))
 
 			continue
 		}
 
 		entry, err := parseMappingEntry(basePath, keyNode, value)
 		if err != nil {
-			errs.Add(locateMappingEntryError(i, basePath, keyNode, err))
+			errs = errs.Append(locateMappingEntryError(i, basePath, keyNode, err))
 
 			continue
 		}
@@ -92,7 +93,11 @@ func parseMapping(basePath string, src *yaml.Node) (*node.MappingSource, error) 
 		result.Value = append(result.Value, entry)
 	}
 
-	return result, errs.Compact()
+	if err := errs.Compact(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func parseMappingEntry(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {

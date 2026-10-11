@@ -1,34 +1,40 @@
 package errors
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
-type Joined struct {
-	errs []error
-}
+type JoinedError []error
 
-func NewJoined() *Joined {
-	return &Joined{}
-}
-
-func (e *Joined) Add(err error) {
-	if err == nil || IsEmpty(err) {
-		return
+func (e JoinedError) Append(err error) JoinedError {
+	if errors.Is(err, ErrEmpty) {
+		return e
 	}
 
-	e.errs = append(e.errs, err)
+	return append(e, err)
 }
 
-func (e *Joined) Compact() error {
-	switch len(e.errs) {
+func (e JoinedError) Error() string {
+	var result strings.Builder
+
+	result.WriteString(e[0].Error())
+
+	for _, err := range e {
+		result.WriteByte('\n')
+		result.WriteString(err.Error())
+	}
+
+	return result.String()
+}
+
+func (e JoinedError) Compact() error {
+	switch len(e) {
 	case 0:
 		return nil
 	case 1:
-		return e.errs[0]
+		return e[0]
 	default:
-		return errors.Join(e.errs...)
+		return e
 	}
-}
-
-func IsEmpty(err error) bool {
-	return errors.Is(err, ErrEmpty)
 }

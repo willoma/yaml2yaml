@@ -38,14 +38,14 @@ func (s *SequenceSource) String() string {
 }
 
 func (s *SequenceSource) Process(defs Definitions) (Node, error) {
-	errs := errors.NewJoined()
+	var errs errors.JoinedError
 
 	result := make(Sequence, 0, len(s.Value))
 
 	for i, item := range s.Value {
 		processed, err := item.Process(defs)
 		if err != nil {
-			errs.Add(errors.LocateByIndex(i, s.pos, err))
+			errs = errs.Append(errors.LocateByIndex(i, s.pos, err))
 
 			continue
 		}
@@ -53,7 +53,11 @@ func (s *SequenceSource) Process(defs Definitions) (Node, error) {
 		result = append(result, processed)
 	}
 
-	return result, errs.Compact()
+	if err := errs.Compact(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (s Sequence) Bool() (value, ok bool) {

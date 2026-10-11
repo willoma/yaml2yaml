@@ -9,16 +9,16 @@ import (
 )
 
 func (s *Source) index(defs node.Definitions, expr *ast.IndexExpr) (node.Node, error) {
-	errs := errors.NewJoined()
+	var errs errors.JoinedError
 
 	value, err := s.resolve(defs, expr.X)
 	if err != nil {
-		errs.Add(fmt.Errorf("expression: %w", err))
+		errs = errs.Append(fmt.Errorf("expression: %w", err))
 	}
 
 	indexNode, err := s.resolve(defs, expr.Index)
 	if err != nil {
-		errs.Add(fmt.Errorf("index: %w", err))
+		errs = errs.Append(fmt.Errorf("index: %w", err))
 	}
 
 	if err := errs.Compact(); err != nil {
@@ -27,12 +27,12 @@ func (s *Source) index(defs node.Definitions, expr *ast.IndexExpr) (node.Node, e
 
 	xSeq, ok := value.(node.Sequence)
 	if !ok {
-		errs.Add(fmt.Errorf("expression: %w", errors.ErrNotASequence))
+		errs = errs.Append(fmt.Errorf("expression: %w", errors.ErrNotASequence))
 	}
 
 	index, ok := indexNode.Int()
 	if !ok {
-		errs.Add(fmt.Errorf("index: %w", errors.ErrNotANumber))
+		errs = errs.Append(fmt.Errorf("index: %w", errors.ErrNotANumber))
 	}
 
 	if err := errs.Compact(); err != nil {
@@ -47,11 +47,11 @@ func (s *Source) index(defs node.Definitions, expr *ast.IndexExpr) (node.Node, e
 }
 
 func (s *Source) indexList(defs node.Definitions, expr *ast.IndexListExpr) (node.Node, error) {
-	errs := errors.NewJoined()
+	var errs errors.JoinedError
 
 	value, err := s.resolve(defs, expr.X)
 	if err != nil {
-		errs.Add(fmt.Errorf("expression: %w", err))
+		errs = errs.Append(fmt.Errorf("expression: %w", err))
 	}
 
 	var indices []int
@@ -59,14 +59,14 @@ func (s *Source) indexList(defs node.Definitions, expr *ast.IndexListExpr) (node
 	for i, indexExpr := range expr.Indices {
 		indexNode, err := s.resolve(defs, indexExpr)
 		if err != nil {
-			errs.Add(fmt.Errorf("index #%d: %w", i, err))
+			errs = errs.Append(fmt.Errorf("index #%d: %w", i, err))
 
 			continue
 		}
 
 		index, ok := indexNode.Int()
 		if !ok {
-			errs.Add(fmt.Errorf("index: %w", errors.ErrNotANumber))
+			errs = errs.Append(fmt.Errorf("index: %w", errors.ErrNotANumber))
 
 			continue
 		}
@@ -87,7 +87,9 @@ func (s *Source) indexList(defs node.Definitions, expr *ast.IndexListExpr) (node
 
 	for i, index := range indices {
 		if len(xSeq) <= index {
-			errs.Add(fmt.Errorf("%d: %w", index, errors.ErrOutOfBounds))
+			errs = errs.Append(fmt.Errorf("%d: %w", index, errors.ErrOutOfBounds))
+
+			continue
 		}
 
 		result[i] = xSeq[index]

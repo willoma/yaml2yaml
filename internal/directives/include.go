@@ -68,9 +68,10 @@ func (i *dirInclude) dir(defs node.Definitions, path string) (node.Node, error) 
 		return nil, err
 	}
 
-	var result node.Node
-
-	errs := errors.NewJoined()
+	var (
+		errs   errors.JoinedError
+		result node.Node
+	)
 
 	for _, entry := range entries {
 		var value node.Node
@@ -84,13 +85,15 @@ func (i *dirInclude) dir(defs node.Definitions, path string) (node.Node, error) 
 		}
 
 		if err != nil {
-			errs.Add(err)
+			errs = errs.Append(err)
 
 			continue
 		}
 
 		result, err = result.Merge(value)
-		errs.Add(err)
+		if err != nil {
+			errs = errs.Append(err)
+		}
 	}
 
 	if result == nil {
