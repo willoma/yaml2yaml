@@ -38,7 +38,13 @@ colorslist:
   base_color: yellow
 - name: lightgrey
   base_color: grey
-somecolors:
+colorsscalars:
+- red
+- blue
+- green
+- yellow
+- grey
+colorsslice:
 - base: blue
   variant: dark
 - base: green
