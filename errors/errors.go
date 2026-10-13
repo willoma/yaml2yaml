@@ -11,6 +11,7 @@ var (
 	ErrInvalidOperationWithSequences = errors.New("invalid operation with sequences")
 	ErrInvalidOperationWithMaps      = errors.New("invalid operation with maps")
 	ErrInvalidOperationWithStrings   = errors.New("invalid operation with strings")
+	ErrMultipleScalarValues          = errors.New("multiple scalar values")
 	ErrNotABinary                    = errors.New("not a binary")
 	ErrNotAMapping                   = errors.New("not a mapping")
 	ErrNotAMappingEntry              = errors.New("not a mapping entry")

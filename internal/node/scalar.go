@@ -82,10 +82,6 @@ func (b Bool) Equals(other Node) bool {
 	return false
 }
 
-func (b Bool) Merge(other Node) (Node, error) {
-	return other, nil
-}
-
 func (b Bool) ToYAML() *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: strconv.FormatBool(b.value)}
 }
@@ -124,10 +120,6 @@ func (i Int) Equals(other Node) bool {
 	}
 
 	return false
-}
-
-func (i Int) Merge(other Node) (Node, error) {
-	return other, nil
 }
 
 func (i Int) ToYAML() *yaml.Node {
@@ -174,10 +166,6 @@ func (f Float) Equals(other Node) bool {
 	}
 
 	return false
-}
-
-func (f Float) Merge(other Node) (Node, error) {
-	return other, nil
 }
 
 func (f Float) ToYAML() *yaml.Node {
@@ -246,10 +234,6 @@ func (s String) Equals(other Node) bool {
 	return s.value == other.String()
 }
 
-func (s String) Merge(other Node) (Node, error) {
-	return other, nil
-}
-
 func (s String) ToYAML() *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Style: s.style(), Tag: "!!str", Value: s.value}
 }
@@ -298,10 +282,6 @@ func (b Binary) String() string {
 
 func (b Binary) Equals(other Node) bool {
 	return string(b.Value) == other.String()
-}
-
-func (b Binary) Merge(other Node) (Node, error) {
-	return other, nil
 }
 
 func (b Binary) ToYAML() *yaml.Node {

@@ -32,9 +32,7 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 		return nil, fmt.Errorf("sequence: %w", err)
 	}
 
-	result := f.initialResult(seq)
-
-	var errs errors.JoinedError
+	processed := node.NewProcessedEntries(len(seq.Value))
 
 	for i, item := range seq.Value {
 		childDefs := defsWithArgs(defs, item)
@@ -42,34 +40,11 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 		childDefs.args["i"] = node.NewInt(f.sequence.Pos(), int64(i))
 
 		childResult, err := f.value.Process(childDefs)
-		if err != nil {
-			errs = errs.Append(errors.LocateByIndex(i, f.value.Pos(), err))
 
-			continue
-		}
-
-		result, err = result.Merge(childResult)
-		if err != nil {
-			errs = errs.Append(errors.LocateByIndex(i, f.value.Pos(), err))
-		}
+		processed.AppendIndexed(i, f.value.Pos(), childResult, err)
 	}
 
-	if err := errs.Compact(); err != nil {
-		return nil, err
-	}
-
-	switch result := result.(type) {
-	case node.Mapping:
-		if len(result) == 0 {
-			return nil, errors.ErrEmpty
-		}
-	case node.Sequence:
-		if len(result) == 0 {
-			return nil, errors.ErrEmpty
-		}
-	}
-
-	return result, nil
+	return processed.Result()
 }
 
 func (f *dirFor) processSeq(defs node.Definitions) (*node.SequenceSource, error) {
@@ -93,15 +68,4 @@ func (f *dirFor) processSeq(defs node.Definitions) (*node.SequenceSource, error)
 	}
 
 	return seq, nil
-}
-
-func (f *dirFor) initialResult(seq *node.SequenceSource) node.Node {
-	switch value := f.value.(type) {
-	case *node.SequenceSource:
-		return make(node.Sequence, 0, len(seq.Value)*len(value.Value))
-	case *node.MappingSource:
-		return make(node.Mapping, 0, len(seq.Value)*len(value.Value))
-	default:
-		return make(node.Sequence, 0, len(seq.Value))
-	}
 }

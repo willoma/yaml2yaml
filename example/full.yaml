@@ -51,9 +51,6 @@ colorslist:
     - name: ?variant + base
       base_color: ?base
 
-colorsscalars:
-  !for colors: ?base
-
 colorsslice: ?colors[1:3]
 
 fourthcolor: ?colors[3].base

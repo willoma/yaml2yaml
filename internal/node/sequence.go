@@ -104,16 +104,6 @@ func (s Sequence) Equals(other Node) bool {
 	return true
 }
 
-func (s Sequence) Merge(other Node) (Node, error) {
-	if otherSeq, ok := other.(Sequence); ok {
-		s = append(s, otherSeq...)
-	} else {
-		s = append(s, other)
-	}
-
-	return s, nil
-}
-
 func (s Sequence) ToYAML() *yaml.Node {
 	content := make([]*yaml.Node, len(s))
 	for i, item := range s {

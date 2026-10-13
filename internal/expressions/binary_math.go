@@ -43,7 +43,13 @@ func (s *Source) binMath(left, right node.Node, op token.Token) (node.Node, erro
 func (s *Source) mathSequence(left node.Sequence, right node.Node, op token.Token) (node.Node, error) {
 	switch op {
 	case token.ADD:
-		return left.Merge(right)
+		if rseq, ok := right.(node.Sequence); ok {
+			left = append(left, rseq...)
+		} else {
+			left = append(left, right)
+		}
+
+		return left, nil
 	case token.MUL:
 		rint, ok := right.Int()
 		if !ok {

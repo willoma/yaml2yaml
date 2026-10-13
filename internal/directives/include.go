@@ -68,10 +68,7 @@ func (i *dirInclude) dir(defs node.Definitions, path string) (node.Node, error) 
 		return nil, err
 	}
 
-	var (
-		errs   errors.JoinedError
-		result node.Node
-	)
+	processed := node.NewProcessedEntries(len(entries))
 
 	for _, entry := range entries {
 		var value node.Node
@@ -84,23 +81,10 @@ func (i *dirInclude) dir(defs node.Definitions, path string) (node.Node, error) 
 			value, err = i.file(defs, entryPath)
 		}
 
-		if err != nil {
-			errs = errs.Append(err)
-
-			continue
-		}
-
-		result, err = result.Merge(value)
-		if err != nil {
-			errs = errs.Append(err)
-		}
+		processed.Append(entry.Name(), i.Pos(), value, err)
 	}
 
-	if result == nil {
-		return nil, errors.ErrEmpty
-	}
-
-	return result, errs.Compact()
+	return processed.Result()
 }
 
 func (i *dirInclude) file(defs node.Definitions, path string) (node.Node, error) {

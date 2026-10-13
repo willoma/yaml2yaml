@@ -22,6 +22,5 @@ type Node interface {
 	String() string
 
 	Equals(other Node) bool
-	Merge(other Node) (Node, error)
 	ToYAML() *yaml.Node
 }
