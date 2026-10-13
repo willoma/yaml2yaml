@@ -179,10 +179,10 @@ func (p *ProcessedEntries) scalar() (Node, error) {
 }
 
 func (p *ProcessedEntries) multipleScalars() error {
-	var errs errors.JoinedError
+	errs := make(errors.JoinedError, len(p.entries))
 
-	for _, entry := range p.entries {
-		errs = append(errs, entry.locateError(errors.ErrMultipleScalarValues))
+	for i, entry := range p.entries {
+		errs[i] = entry.locateError(errors.ErrMultipleScalarValues)
 	}
 
 	return errs.Compact()

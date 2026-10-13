@@ -165,7 +165,6 @@ func (m Mapping) Merge(other Mapping) (Mapping, error) {
 	}
 
 	return m, errs.Compact()
-
 }
 
 func (m Mapping) mergeEntry(value mappingEntry) (Mapping, error) {
@@ -239,7 +238,8 @@ func (m mappingEntry) merge(other mappingEntry) (mappingEntry, error) {
 			return mappingEntry{}, errors.ErrNotASequence
 		}
 
-		m.Value = append(value, oSequence...)
+		value = append(value, oSequence...)
+		m.Value = value
 
 		return m, nil
 	default:
