@@ -48,7 +48,7 @@ func (a *dirApply) Process(defs node.Definitions) (node.Node, error) {
 			childDefs.passToParent()
 		}
 
-		return nil, errors.LocateByKey(a.String(), a.Pos(), err)
+		return nil, err
 	}
 
 	return result, nil
