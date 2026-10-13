@@ -39,7 +39,7 @@ func processToBytes(basePath string, src *yaml.Node) ([]byte, error) {
 		return nil, err
 	}
 
-	result, err := yaml.Dump(parsed, yaml.WithIndent(indentSize))
+	result, err := yaml.Dump(parsed, yaml.WithIndent(indentSize), yaml.WithLineWidth(-1))
 	if err != nil {
 		return nil, fmt.Errorf("converting data to YAML: %w", err)
 	}
