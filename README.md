@@ -105,10 +105,9 @@ the `!apply` entry:
 
 Includes its body only when the expression in the key is truthy. The
 expression uses the same syntax as inline expressions (see below), and the
-leading `?` is optional. Truthy values are `true`, positive numbers, strings
-that parse as `true` (such as `"true"`, `"1"`, or `"t"`), and non-empty
-sequences and mappings; everything else — `false`, zero and negative numbers,
-any other string, empty sequences and mappings, and binary data — is falsy.
+leading `?` is optional. Truthy values are `true`, positive numbers, and non-empty
+strings, sequences, mappings and binary data; everything else — `false`, zero and negative numbers,
+empty strings, sequences, mappings and binary data — is falsy.
 An identifier that is not defined produces no value, so the `!if` entry is
 simply skipped instead of failing.
 

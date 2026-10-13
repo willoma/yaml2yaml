@@ -185,11 +185,7 @@ func (s String) Process(Definitions) (Node, error) {
 }
 
 func (s String) Bool() (value, ok bool) {
-	if value, err := strconv.ParseBool(s.value); err == nil {
-		return value, true
-	}
-
-	return false, false
+	return s.value != "", false
 }
 
 func (s String) Int() (int64, bool) {
@@ -265,7 +261,7 @@ func (b Binary) Process(Definitions) (Node, error) {
 }
 
 func (b Binary) Bool() (value, ok bool) {
-	return false, false
+	return len(b.Value) > 0, false
 }
 
 func (b Binary) Int() (int64, bool) {
