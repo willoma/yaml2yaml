@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
-	"strings"
 
 	"github.com/willoma/yaml2yaml/internal/node"
 )
@@ -16,7 +15,7 @@ type Source struct {
 }
 
 func Parse(pos [2]int, src string) (*Source, error) {
-	expr, err := parser.ParseExpr(strings.TrimPrefix(src, "?"))
+	expr, err := parser.ParseExpr(src)
 	if err != nil {
 		return nil, fmt.Errorf("parsing error: %w", err)
 	}

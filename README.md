@@ -33,16 +33,12 @@ re-emitted with 2-space indentation.
 
 ## Directives
 
-Directives are written as YAML tags on mapping keys. yaml2yaml recognizes five
-special tags: `!define`, `!apply`, `!if`, `!for`, and `!include`.
-
-In `!define`, `!apply`, `!for`, and `!include` keys, the name or path may
-itself be an expression prefixed with `?`, resolved when the directive is
-processed.
+Directives are written as YAML tags on mapping keys.
+yaml2yaml recognizes the special tags documented hereafter.
 
 When several entries of a mapping produce the same key, the new value is
 merged into the existing one if it is a mapping (failing if the new value is
-not itself a mapping), and fails otherwise.
+not itself a mapping) or a sequence, and fails otherwise.
 
 ### `!define` — define a reusable value
 
@@ -101,27 +97,18 @@ the `!apply` entry:
 !if _ == "m": !apply man   # "is" and "has" become defined in this scope
 ```
 
-### `!if` — conditional inclusion
+### `!expr` - expressions
 
-Includes its body only when the expression in the key is truthy. The
-expression uses the same syntax as inline expressions (see below), and the
-leading `?` is optional. Truthy values are `true`, positive numbers, and non-empty
-strings, sequences, mappings and binary data; everything else — `false`, zero and negative numbers,
-empty strings, sequences, mappings and binary data — is falsy.
-An identifier that is not defined produces no value, so the `!if` entry is
-simply skipped instead of failing.
+Evaluates the value as an expression,
+parsed using Go expression syntax (via `go/parser`)
+and resolved against the current definitions.
 
 ```yaml
-!define looks:
-  !if _ == "f":
-    !define is: strong
-    !define has: boobies
-  !if _ == "m": !apply man
+born in: !expr year - age
+adult for: !expr age - majority + " years"
+beautiful: !expr _ == "f"
+appearance: !expr is + " with " + has
 ```
-
-A body that produces no output — typically one containing only `!define`
-directives — passes its definitions to the enclosing scope, as in the example
-above where `is` and `has` become defined in the `looks` template.
 
 ### `!for` — loop over a sequence
 
@@ -146,22 +133,44 @@ special name `_`.
     variant: dark
 
 !for colors:
-  ?variant + base:
-    rank: ?i
-    base_color: ?base
+  !expr variant + base:
+    rank: !expr i
+    base_color: !expr base
 ```
+
+### `!if` — conditional inclusion
+
+Includes its body only when the expression in the key is truthy.
+The expression uses the same syntax as with the `!expr` directive.
+Truthy values are `true`, positive numbers,
+and non-empty strings, sequences, mappings and binary data;
+everything else — `false`, zero and negative numbers,
+empty strings, sequences, mappings and binary data — is falsy.
+An identifier that is not defined produces no value,
+so the `!if` entry is simply skipped instead of failing.
+
+```yaml
+!define looks:
+  !if _ == "f":
+    !define is: strong
+    !define has: boobies
+  !if _ == "m": !apply man
+```
+
+A body that produces no output — typically one containing only `!define`
+directives — passes its definitions to the enclosing scope, as in the example
+above where `is` and `has` become defined in the `looks` template.
 
 ### `!include` — include another file
 
 Loads another YAML file, processes it, and inlines the result in place of the
 directive. A relative path is resolved against the directory of the file
 containing the directive — or against the current working directory when
-reading from standard input — and the key may be an expression. An `!include`
-entry does not use a value; any value provided is ignored.
+reading from standard input.
+An `!include` entry does not use a value; any value provided is ignored.
 
 ```yaml
 !include common/definitions.yaml:
-!include ?dir + "/" + name + ".yaml":
 ```
 
 The included file is processed with access to the definitions in scope at the
@@ -183,16 +192,8 @@ earlier ones. Merging incompatible kinds is an error.
 
 ## Expressions
 
-Any scalar value prefixed with `?` is evaluated as an expression. Expressions
-are parsed using Go expression syntax (via `go/parser`) and resolved against the
-current definitions.
-
-```yaml
-born in: ?year - age
-adult for: ?age - majority + " years"
-beautiful: ?_ == "f"
-appearance: ?is + " with " + has
-```
+Values evaluated with the `!expr` and `!if` directives
+follow the logic described hereafter.
 
 ### Identifiers
 
@@ -200,8 +201,8 @@ A bare identifier resolves to a definition by name, walking up the scope chain
 to parent mappings:
 
 ```yaml
-- ?year       # the "year" definition
-- ?majority   # the "majority" definition
+- !expr year       # the "year" definition
+- !expr majority   # the "majority" definition
 ```
 
 `true` and `false` are boolean literals. An identifier that is not defined
@@ -214,8 +215,8 @@ condition, this simply skips the entry).
 Selector expressions (`.`) access fields of a mapping value:
 
 ```yaml
-- ?color.base      # the "base" field of the current item
-- ?color.variant   # the "variant" field of the current item
+- !expr color.base      # the "base" field of the current item
+- !expr color.variant   # the "variant" field of the current item
 ```
 
 Accessing a field that does not exist produces no value. Accessing a field of
@@ -226,10 +227,10 @@ a value that is not a mapping is an error.
 Index expressions (`[]`) access elements of a sequence:
 
 ```yaml
-- ?colors[0]        # the first element
-- ?colors[0, 2]     # a sequence of the first and third elements
-- ?colors[1:3]      # a slice containing elements 1 and 2
-- ?colors[3].base   # indexing can be chained with field access
+- !expr colors[0]        # the first element
+- !expr colors[0, 2]     # a sequence of the first and third elements
+- !expr colors[1:3]      # a slice containing elements 1 and 2
+- !expr colors[3].base   # indexing can be chained with field access
 ```
 
 Indexes and slice bounds must be integers and are bounds-checked; out-of-range
@@ -242,9 +243,9 @@ Expressions support integer, float, character, and string literals using Go
 syntax, plus the booleans `true` and `false`:
 
 ```yaml
-?age + 1
-?1.5 * weight
-?"hello " + name
+- !expr age + 1
+- !expr 1.5 * weight
+- !expr "hello " + name
 ```
 
 ### Operators
@@ -263,7 +264,7 @@ Arithmetic:
   merges mappings. Adding a non-sequence value to a sequence appends it.
 - `a - b` and `a / b` subtract and divide integers and floats.
 - `a * b` multiplies integers and floats. When `b` is an integer, it instead
-  repeats a string, sequence, or binary `a` (`?"ab" * 3` produces `"ababab"`).
+  repeats a string, sequence, or binary `a` (`!expr "ab" * 3` produces `"ababab"`).
 - `a % b` is the remainder of an integer division.
 
 Comparison:
@@ -281,7 +282,7 @@ Logical:
 
 Arithmetic and comparison operators perform automatic type coercion: operands
 are tried in order as integers, floats, booleans, then strings, so numeric
-strings are parsed when combined with numbers (`?"5" * 3` produces `15`, not
+strings are parsed when combined with numbers (`!expr "5" * 3` produces `15`, not
 `"555"`).
 
 Parentheses can be used to group expressions.
@@ -309,12 +310,12 @@ Given the input `example/full.yaml`, which includes
     !define is: strong
     !define has: boobies
   !if _ == "m": !apply man
-  beautiful: ?_ == "f"
-  appearance: ?is + " with " + has
+  beautiful: !expr _ == "f"
+  appearance: !expr is + " with " + has
 
 !define adult:
-  born in: ?year - age
-  adult for: ?age - majority + " years"
+  born in: !expr year - age
+  adult for: !expr age - majority + " years"
   !if wonderful:
     person: wonderful
   !if wonderful == false:
@@ -346,18 +347,18 @@ bob:
     variant: light
 
 !for colors:
-  ?variant + base:
-    rank: ?i
-    base_color: ?base
+  !expr variant + base:
+    rank: !expr i
+    base_color: !expr base
 
 colorslist:
   !for colors:
-    - name: ?variant + base
-      base_color: ?base
+    - name: !expr variant + base
+      base_color: !expr base
 
-somecolors: ?colors[1:3]
+somecolors: !expr colors[1:3]
 
-fourthcolor: ?colors[3].base
+fourthcolor: !expr colors[3].base
 
 !if colors:
   has_colors: true

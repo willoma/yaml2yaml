@@ -15,7 +15,7 @@ type dirIf struct {
 	value     node.Source
 }
 
-func If(condition, value node.Source) (node.Source, error) {
+func If(condition, value node.Source) (*dirIf, error) {
 	expr, err := expressions.Parse(condition.Pos(), condition.String())
 	if err != nil {
 		return nil, fmt.Errorf("condition: %w", err)

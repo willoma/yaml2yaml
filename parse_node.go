@@ -8,7 +8,6 @@ import (
 
 	"github.com/willoma/yaml2yaml/errors"
 	"github.com/willoma/yaml2yaml/internal/directives"
-	"github.com/willoma/yaml2yaml/internal/expressions"
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
@@ -116,6 +115,18 @@ func parseMappingEntry(basePath string, keyNode *yaml.Node, value node.Source) (
 		}
 
 		return directives.Define(name, value), nil
+	case directives.NameExpr:
+		key, err := parseWithoutTag(basePath, keyNode)
+		if err != nil {
+			return nil, err
+		}
+
+		expr, err := directives.Expr(key)
+		if err != nil {
+			return nil, err
+		}
+
+		return node.NewMappingEntrySource(expr, value), nil
 	case directives.NameFor:
 		sequence, err := parseWithoutTag(basePath, keyNode)
 		if err != nil {
@@ -156,6 +167,13 @@ func parseScalar(basePath string, src *yaml.Node) (node.Source, error) {
 		}
 
 		return directives.Apply(name, nil), nil
+	case directives.NameExpr:
+		expr, err := parseScalarWithoutTag(src)
+		if err != nil {
+			return nil, err
+		}
+
+		return directives.Expr(expr)
 	case directives.NameInclude:
 		path, err := parseScalarWithoutTag(src)
 		if err != nil {
@@ -180,10 +198,6 @@ func parseScalar(basePath string, src *yaml.Node) (node.Source, error) {
 			return node.NewBinary(pos(src), value), nil
 		}
 	case "!!str":
-		if src.Value != "" && src.Value[0] == '?' {
-			return expressions.Parse(pos(src), src.Value)
-		}
-
 		return node.NewString(pos(src), src.Value), nil
 	}
 
@@ -191,10 +205,6 @@ func parseScalar(basePath string, src *yaml.Node) (node.Source, error) {
 }
 
 func parseScalarWithoutTag(src *yaml.Node) (node.Source, error) {
-	if src.Value != "" && src.Value[0] == '?' {
-		return expressions.Parse(pos(src), src.Value)
-	}
-
 	if value, err := strconv.ParseInt(src.Value, 10, 64); err == nil {
 		return node.NewInt(pos(src), value), nil
 	}
