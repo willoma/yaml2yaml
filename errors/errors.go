@@ -18,6 +18,7 @@ var (
 	ErrNotANumber                    = errors.New("not a number")
 	ErrNotAPath                      = errors.New("not a path")
 	ErrNotASequence                  = errors.New("not a sequence")
+	ErrNotAString                    = errors.New("not a string")
 	ErrNotDefined                    = errors.New("not defined")
 	ErrOutOfBounds                   = errors.New("out of bounds")
 	ErrSyntaxError                   = errors.New("syntax error")

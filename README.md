@@ -110,6 +110,16 @@ beautiful: !expr _ == "f"
 appearance: !expr is + " with " + has
 ```
 
+### `!fmt` — formatted string
+
+Formats a string, replacing "`$(xxx)`" sections with the result
+of expression `xxx`. The `$` character can be kept and not interpreted,
+by escaping it with `\`.
+
+```yaml
+!fmt In a formatted string, \$(year) would be processed as "$(year)"
+```
+
 ### `!for` — loop over a sequence
 
 Iterates over a sequence. The key may be the name of a previously defined
@@ -192,7 +202,7 @@ earlier ones. Merging incompatible kinds is an error.
 
 ## Expressions
 
-Values evaluated with the `!expr` and `!if` directives
+Values evaluated with the `!expr`, `!fmt` and `!if` directives
 follow the logic described hereafter.
 
 ### Identifiers

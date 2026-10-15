@@ -102,52 +102,19 @@ func parseMapping(basePath string, src *yaml.Node) (*node.MappingSource, error) 
 func parseMappingEntry(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
 	switch keyNode.Tag {
 	case directives.NameApply:
-		name, err := parseWithoutTag(basePath, keyNode)
-		if err != nil {
-			return nil, err
-		}
-
-		return directives.Apply(name, value), nil
+		return parseMappingDirectiveApply(basePath, keyNode, value)
 	case directives.NameDefine:
-		name, err := parseWithoutTag(basePath, keyNode)
-		if err != nil {
-			return nil, err
-		}
-
-		return directives.Define(name, value), nil
+		return parseMappingDirectiveDefine(basePath, keyNode, value)
 	case directives.NameExpr:
-		key, err := parseWithoutTag(basePath, keyNode)
-		if err != nil {
-			return nil, err
-		}
-
-		expr, err := directives.Expr(key)
-		if err != nil {
-			return nil, err
-		}
-
-		return node.NewMappingEntrySource(expr, value), nil
+		return parseMappingDirectiveExpr(basePath, keyNode, value)
+	case directives.NameFmt:
+		return parseMappingDirectiveFmt(basePath, keyNode, value)
 	case directives.NameFor:
-		sequence, err := parseWithoutTag(basePath, keyNode)
-		if err != nil {
-			return nil, err
-		}
-
-		return directives.For(sequence, value), nil
+		return parseMappingDirectiveFor(basePath, keyNode, value)
 	case directives.NameIf:
-		condition, err := parseWithoutTag(basePath, keyNode)
-		if err != nil {
-			return nil, err
-		}
-
-		return directives.If(condition, value)
+		return parseMappingDirectiveIf(basePath, keyNode, value)
 	case directives.NameInclude:
-		path, err := parseWithoutTag(basePath, keyNode)
-		if err != nil {
-			return nil, err
-		}
-
-		return directives.Include(basePath, path, parseNode), nil
+		return parseMappingDirectiveInclude(basePath, keyNode)
 	default:
 		key, err := parseNode(basePath, keyNode)
 		if err != nil {
@@ -156,6 +123,79 @@ func parseMappingEntry(basePath string, keyNode *yaml.Node, value node.Source) (
 
 		return node.NewMappingEntrySource(key, value), nil
 	}
+}
+
+func parseMappingDirectiveApply(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
+	name, err := parseWithoutTag(basePath, keyNode)
+	if err != nil {
+		return nil, err
+	}
+
+	return directives.Apply(name, value), nil
+}
+
+func parseMappingDirectiveDefine(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
+	name, err := parseWithoutTag(basePath, keyNode)
+	if err != nil {
+		return nil, err
+	}
+
+	return directives.Define(name, value), nil
+}
+
+func parseMappingDirectiveExpr(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
+	key, err := parseWithoutTag(basePath, keyNode)
+	if err != nil {
+		return nil, err
+	}
+
+	expr, err := directives.Expr(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return node.NewMappingEntrySource(expr, value), nil
+}
+
+func parseMappingDirectiveFmt(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
+	key, err := parseWithoutTag(basePath, keyNode)
+	if err != nil {
+		return nil, err
+	}
+
+	fmtSrc, err := directives.Fmt(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return node.NewMappingEntrySource(fmtSrc, value), nil
+}
+
+func parseMappingDirectiveFor(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
+	sequence, err := parseWithoutTag(basePath, keyNode)
+	if err != nil {
+		return nil, err
+	}
+
+	return directives.For(sequence, value), nil
+}
+
+func parseMappingDirectiveIf(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
+	condition, err := parseWithoutTag(basePath, keyNode)
+	if err != nil {
+		return nil, err
+	}
+
+	return directives.If(condition, value)
+}
+
+func parseMappingDirectiveInclude(basePath string, keyNode *yaml.Node) (node.Source, error) {
+	path, err := parseWithoutTag(basePath, keyNode)
+	if err != nil {
+		return nil, err
+	}
+
+	return directives.Include(basePath, path, parseNode), nil
 }
 
 func parseScalar(basePath string, src *yaml.Node) (node.Source, error) {
@@ -174,6 +214,13 @@ func parseScalar(basePath string, src *yaml.Node) (node.Source, error) {
 		}
 
 		return directives.Expr(expr)
+	case directives.NameFmt:
+		str, err := parseScalarWithoutTag(src)
+		if err != nil {
+			return nil, err
+		}
+
+		return directives.Fmt(str)
 	case directives.NameInclude:
 		path, err := parseScalarWithoutTag(src)
 		if err != nil {

@@ -6,11 +6,11 @@
     !define has: boobies
   !if _ == "m": !apply man
   beautiful: !expr _ == "f"
-  appearance: !expr is + " with " + has
+  appearance: !fmt $(is) with $(has)
 
 !define adult:
   born in: !expr year - age
-  adult for: !expr age - majority + " years"
+  adult for: !fmt $(age - majority) years
   !if wonderful:
     person: wonderful
   !if wonderful == false:
@@ -42,13 +42,13 @@ bob:
     variant: light
 
 !for colors:
-  !expr variant + base:
+  !fmt $(variant)$(base):
     rank: !expr i
     base_color: !expr base
 
 colorslist:
   !for colors:
-    - name: !expr variant + base
+    - name: !fmt $(variant)$(base)
       base_color: !expr base
 
 colorsslice: !expr colors[1:3]
@@ -57,3 +57,5 @@ fourthcolor: !expr colors[3].base
 
 !if colors:
   has_colors: true
+
+escaped: !fmt In a formatted string, \$(year) would be processed as "$(year)"

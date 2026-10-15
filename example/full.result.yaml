@@ -45,3 +45,4 @@ colorsslice:
   variant: medium
 fourthcolor: yellow
 has_colors: true
+escaped: In a formatted string, $(year) would be processed as "2026"
