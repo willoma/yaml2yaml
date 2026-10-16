@@ -19,10 +19,10 @@ func defsWithArgs(parent node.Definitions, args node.Source) *definitionsWithArg
 		return defs
 	}
 
+	defs.args["_"] = args
+
 	mapping, ok := args.(*node.MappingSource)
 	if !ok {
-		defs.args["_"] = args
-
 		return defs
 	}
 
