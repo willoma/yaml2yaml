@@ -33,6 +33,9 @@ func (s *Source) resolve(defs node.Definitions, expr ast.Expr) (node.Node, error
 	case *ast.SliceExpr:
 		return s.slice(defs, expr)
 
+	case *ast.CallExpr:
+		return s.call(defs, expr)
+
 	case *ast.UnaryExpr:
 		return s.unary(defs, expr)
 

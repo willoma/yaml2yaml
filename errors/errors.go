@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	ErrEmpty                         = errors.New("empty")
+	ErrInvalidArgumentsCount         = errors.New("invalid arguments count")
 	ErrInvalidExpression             = errors.New("invalid expression")
 	ErrInvalidOperationWithBinaries  = errors.New("invalid operation with binary data")
 	ErrInvalidOperationWithFloats    = errors.New("invalid operation with floats")
@@ -13,6 +14,7 @@ var (
 	ErrInvalidOperationWithStrings   = errors.New("invalid operation with strings")
 	ErrMultipleScalarValues          = errors.New("multiple scalar values")
 	ErrNotABinary                    = errors.New("not a binary")
+	ErrNotAFunction                  = errors.New("not a function")
 	ErrNotAMapping                   = errors.New("not a mapping")
 	ErrNotAMappingEntry              = errors.New("not a mapping entry")
 	ErrNotANumber                    = errors.New("not a number")

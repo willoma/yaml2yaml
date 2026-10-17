@@ -297,6 +297,20 @@ strings are parsed when combined with numbers (`!expr "5" * 3` produces `15`, no
 
 Parentheses can be used to group expressions.
 
+### Functions
+
+The following function calls are supported:
+
+- `len`:
+  - expects exactly one argument
+  - returns the length of the argument if it is a mapping or a sequence
+  - returns 1 if the argument is a scalar
+  - returns 0 if the argument is not defined
+- `is_value`:
+  - expects exactly one argument
+  - returns `true` if the argument is a scalar value
+  - returns `false` if the argument is a mapping or a sequence
+
 ## Example
 
 Given the input `example/full.yaml`, which includes
