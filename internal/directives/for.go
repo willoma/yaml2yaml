@@ -1,6 +1,7 @@
 package directives
 
 import (
+	oerrors "errors"
 	"fmt"
 
 	"github.com/willoma/yaml2yaml/errors"
@@ -40,6 +41,9 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 		childDefs.args["i"] = node.NewInt(f.sequence.Pos(), int64(i))
 
 		childResult, err := f.value.Process(childDefs)
+		if oerrors.Is(err, errors.ErrEmpty) {
+			childDefs.passToParent()
+		}
 
 		processed.AppendIndexed(i, f.value.Pos(), childResult, err)
 	}
