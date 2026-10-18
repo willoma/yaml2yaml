@@ -32,6 +32,14 @@ func (i *dirIf) String() string {
 	return NameIf + " " + i.condition.String()
 }
 
+func (i *dirIf) EqualsSource(other node.Source) bool {
+	if other, ok := other.(*dirIf); ok {
+		return i.condition.EqualsSource(other.condition) && i.value.EqualsSource(other.value)
+	}
+
+	return false
+}
+
 func (i *dirIf) Process(defs node.Definitions) (node.Node, error) {
 	cond, err := i.condition.Process(defs)
 	if err != nil {

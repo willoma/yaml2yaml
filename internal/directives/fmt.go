@@ -116,6 +116,14 @@ func (f *dirFmt) String() string {
 	return NameApply + " " + f.src.String()
 }
 
+func (f *dirFmt) EqualsSource(other node.Source) bool {
+	if other, ok := other.(*dirFmt); ok {
+		return f.src.EqualsSource(other.src)
+	}
+
+	return false
+}
+
 func (f *dirFmt) Process(defs node.Definitions) (node.Node, error) {
 	var (
 		buf  strings.Builder

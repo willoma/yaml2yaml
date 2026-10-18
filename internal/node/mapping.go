@@ -2,7 +2,6 @@ package node
 
 import (
 	oerrors "errors"
-	"slices"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
@@ -50,6 +49,25 @@ func (m *MappingSource) String() string {
 	return "{" + strings.Join(result, ", ") + "}"
 }
 
+func (m *MappingSource) EqualsSource(other Source) bool {
+	otherMap, ok := other.(*MappingSource)
+	if !ok {
+		return false
+	}
+
+	if len(m.Value) != len(otherMap.Value) {
+		return false
+	}
+
+	for i := range m.Value {
+		if !m.Value[i].EqualsSource(otherMap.Value[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
 	defs := childDefs(parentDefs)
 	processed := NewProcessedEntries(len(m.Value))
@@ -81,6 +99,14 @@ func (m *MappingEntrySource) Pos() [2]int {
 
 func (m *MappingEntrySource) String() string {
 	return m.Key.String()
+}
+
+func (m *MappingEntrySource) EqualsSource(other Source) bool {
+	if otherEntry, ok := other.(*MappingEntrySource); ok {
+		return m.Key.EqualsSource(otherEntry.Key) && m.Value.EqualsSource(otherEntry.Value)
+	}
+
+	return false
 }
 
 func (m *MappingEntrySource) Process(defs Definitions) (Node, error) {
@@ -128,12 +154,23 @@ func (m Mapping) String() string {
 	return "{" + strings.Join(result, ", ") + "}"
 }
 
-func (m Mapping) Equals(other Node) bool {
-	if otherMap, ok := other.(Mapping); ok {
-		return slices.Equal(m, otherMap)
+func (m Mapping) EqualsNode(other Node) bool {
+	otherMap, ok := other.(Mapping)
+	if !ok {
+		return false
 	}
 
-	return false
+	if len(m) != len(otherMap) {
+		return false
+	}
+
+	for i := range m {
+		if !m[i].EqualsNode(otherMap[i]) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (m Mapping) ToYAML() *yaml.Node {
@@ -169,7 +206,7 @@ func (m Mapping) Merge(other Mapping) (Mapping, error) {
 
 func (m Mapping) mergeEntry(value mappingEntry) (Mapping, error) {
 	for i, entry := range m {
-		if entry.Key.Equals(value.Key) {
+		if entry.Key.EqualsNode(value.Key) {
 			newEntry, err := entry.merge(value)
 			if err != nil {
 				return nil, err
@@ -200,13 +237,13 @@ func (m mappingEntry) String() string {
 	return m.Key.String()
 }
 
-func (m mappingEntry) Equals(other Node) bool {
+func (m mappingEntry) EqualsNode(other Node) bool {
 	otherEntry, ok := other.(mappingEntry)
 	if !ok {
 		return false
 	}
 
-	return m.Key.Equals(otherEntry.Key) && m.Value.Equals(otherEntry.Value)
+	return m.Key.EqualsNode(otherEntry.Key) && m.Value.EqualsNode(otherEntry.Value)
 }
 
 func (m mappingEntry) ToYAML() *yaml.Node {

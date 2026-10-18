@@ -37,6 +37,25 @@ func (s *SequenceSource) String() string {
 	return "[" + strings.Join(result, ", ") + "]"
 }
 
+func (s *SequenceSource) EqualsSource(other Source) bool {
+	otherSeq, ok := other.(*SequenceSource)
+	if !ok {
+		return false
+	}
+
+	if len(s.Value) != len(otherSeq.Value) {
+		return false
+	}
+
+	for i := range s.Value {
+		if !s.Value[i].EqualsSource(otherSeq.Value[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (s *SequenceSource) Process(defs Definitions) (Node, error) {
 	var errs errors.JoinedError
 
@@ -85,7 +104,7 @@ func (s Sequence) String() string {
 	return "[" + strings.Join(result, ", ") + "]"
 }
 
-func (s Sequence) Equals(other Node) bool {
+func (s Sequence) EqualsNode(other Node) bool {
 	otherSeq, ok := other.(Sequence)
 	if !ok {
 		return false
@@ -96,7 +115,7 @@ func (s Sequence) Equals(other Node) bool {
 	}
 
 	for i := range s {
-		if !s[i].Equals(otherSeq[i]) {
+		if !s[i].EqualsNode(otherSeq[i]) {
 			return false
 		}
 	}

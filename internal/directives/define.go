@@ -24,6 +24,14 @@ func (d *dirDefine) String() string {
 	return NameDefine + " " + d.name.String()
 }
 
+func (d *dirDefine) EqualsSource(other node.Source) bool {
+	if other, ok := other.(*dirDefine); ok {
+		return d.name.EqualsSource(other.name) && d.value.EqualsSource(other.value)
+	}
+
+	return false
+}
+
 func (d *dirDefine) Process(defs node.Definitions) (node.Node, error) {
 	nameNode, err := d.name.Process(defs)
 	if err != nil {

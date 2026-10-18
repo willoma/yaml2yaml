@@ -27,6 +27,14 @@ func (f *dirFor) String() string {
 	return NameFor + " " + f.sequence.String()
 }
 
+func (f *dirFor) EqualsSource(other node.Source) bool {
+	if other, ok := other.(*dirFor); ok {
+		return f.sequence.EqualsSource(other.sequence) && f.value.EqualsSource(other.value)
+	}
+
+	return false
+}
+
 func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 	seq, err := f.processSeq(defs)
 	if err != nil {

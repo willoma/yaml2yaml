@@ -27,6 +27,14 @@ func (a *dirApply) String() string {
 	return NameApply + " " + a.name.String()
 }
 
+func (a *dirApply) EqualsSource(other node.Source) bool {
+	if other, ok := other.(*dirApply); ok {
+		return a.name.EqualsSource(other.name) && a.args.EqualsSource(other.args)
+	}
+
+	return false
+}
+
 func (a *dirApply) Process(defs node.Definitions) (node.Node, error) {
 	nameNode, err := a.name.Process(defs)
 	if err != nil {

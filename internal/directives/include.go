@@ -36,6 +36,14 @@ func (i *dirInclude) String() string {
 	return NameInclude + " " + i.path.String()
 }
 
+func (i *dirInclude) EqualsSource(other node.Source) bool {
+	if other, ok := other.(*dirInclude); ok {
+		return i.basePath == other.basePath && i.path.EqualsSource(other.path)
+	}
+
+	return false
+}
+
 func (i *dirInclude) Process(defs node.Definitions) (node.Node, error) {
 	pathNode, err := i.path.Process(defs)
 	if err != nil {

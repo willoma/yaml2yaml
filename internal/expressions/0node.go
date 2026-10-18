@@ -31,6 +31,14 @@ func (s *Source) String() string {
 	return s.src
 }
 
+func (s *Source) EqualsSource(other node.Source) bool {
+	if otherSource, ok := other.(*Source); ok {
+		return s.src == otherSource.src
+	}
+
+	return false
+}
+
 func (s *Source) Process(defs node.Definitions) (node.Node, error) {
 	return s.resolve(defs, s.expr)
 }

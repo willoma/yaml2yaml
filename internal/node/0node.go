@@ -7,6 +7,7 @@ type Source interface {
 	Pos() [2]int
 	String() string
 
+	EqualsSource(other Source) bool
 	Process(defs Definitions) (Node, error)
 }
 
@@ -21,6 +22,6 @@ type Node interface {
 	// String returns the node value as a string.
 	String() string
 
-	Equals(other Node) bool
+	EqualsNode(other Node) bool
 	ToYAML() *yaml.Node
 }

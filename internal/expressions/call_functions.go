@@ -43,14 +43,15 @@ func (d *definitionsWithFuns) Set(name string, value node.Source) {
 
 func (f exprFunction) Pos() [2]int                                 { return [2]int{} }
 func (f exprFunction) String() string                              { return "function call" }
+func (f exprFunction) EqualsSource(node.Source) bool               { return false }
 func (f exprFunction) Process(node.Definitions) (node.Node, error) { return f, nil }
 
-func (f baseFun) Bool() (value, ok bool) { return false, false }
-func (f baseFun) Int() (int64, bool)     { return 0, false }
-func (f baseFun) Float() (float64, bool) { return 0, false }
-func (f baseFun) String() string         { return "function call" }
-func (f baseFun) Equals(node.Node) bool  { return false }
-func (f baseFun) ToYAML() *yaml.Node     { return nil }
+func (f baseFun) Bool() (value, ok bool)    { return false, false }
+func (f baseFun) Int() (int64, bool)        { return 0, false }
+func (f baseFun) Float() (float64, bool)    { return 0, false }
+func (f baseFun) String() string            { return "function call" }
+func (f baseFun) EqualsNode(node.Node) bool { return false }
+func (f baseFun) ToYAML() *yaml.Node        { return nil }
 
 func (f funLen) Call(args []node.Node) (node.Node, error) {
 	if len(args) != 1 {

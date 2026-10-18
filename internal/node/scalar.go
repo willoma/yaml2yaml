@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bytes"
 	"encoding/base64"
 	"math"
 	"strconv"
@@ -46,6 +47,14 @@ func (b Bool) Pos() [2]int {
 	return b.pos
 }
 
+func (b Bool) EqualsSource(other Source) bool {
+	if other, ok := other.(Bool); ok {
+		return b.value == other.value
+	}
+
+	return false
+}
+
 func (b Bool) Process(Definitions) (Node, error) {
 	return b, nil
 }
@@ -74,9 +83,9 @@ func (b Bool) String() string {
 	return strconv.FormatBool(b.value)
 }
 
-func (b Bool) Equals(other Node) bool {
-	if otherBool, ok := other.(Bool); ok {
-		return b == otherBool
+func (b Bool) EqualsNode(other Node) bool {
+	if other, ok := other.(Bool); ok {
+		return b == other
 	}
 
 	return false
@@ -92,6 +101,14 @@ func NewInt(pos [2]int, value int64) Int {
 
 func (i Int) Pos() [2]int {
 	return i.pos
+}
+
+func (i Int) EqualsSource(other Source) bool {
+	if other, ok := other.(Int); ok {
+		return i.value == other.value
+	}
+
+	return false
 }
 
 func (i Int) Process(Definitions) (Node, error) {
@@ -114,9 +131,9 @@ func (i Int) String() string {
 	return strconv.FormatInt(i.value, 10)
 }
 
-func (i Int) Equals(other Node) bool {
-	if otherInt, ok := other.Int(); ok {
-		return i.value == otherInt
+func (i Int) EqualsNode(other Node) bool {
+	if other, ok := other.Int(); ok {
+		return i.value == other
 	}
 
 	return false
@@ -132,6 +149,14 @@ func NewFloat(pos [2]int, value float64) Float {
 
 func (f Float) Pos() [2]int {
 	return f.pos
+}
+
+func (f Float) EqualsSource(other Source) bool {
+	if other, ok := other.(Float); ok {
+		return f.value == other.value
+	}
+
+	return false
 }
 
 func (f Float) Process(Definitions) (Node, error) {
@@ -160,9 +185,9 @@ func (f Float) String() string {
 	return strconv.FormatFloat(f.value, 'f', -1, 64)
 }
 
-func (f Float) Equals(other Node) bool {
-	if otherFloat, ok := other.Float(); ok {
-		return f.value == otherFloat
+func (f Float) EqualsNode(other Node) bool {
+	if other, ok := other.Float(); ok {
+		return f.value == other
 	}
 
 	return false
@@ -178,6 +203,14 @@ func NewString(pos [2]int, value string) String {
 
 func (s String) Pos() [2]int {
 	return s.pos
+}
+
+func (s String) EqualsSource(other Source) bool {
+	if other, ok := other.(String); ok {
+		return s.value == other.value
+	}
+
+	return false
 }
 
 func (s String) Process(Definitions) (Node, error) {
@@ -208,22 +241,22 @@ func (s String) String() string {
 	return s.value
 }
 
-func (s String) Equals(other Node) bool {
+func (s String) EqualsNode(other Node) bool {
 	if sInt, ok := s.Int(); ok {
-		if otherInt, ok := other.Int(); ok {
-			return sInt == otherInt
+		if other, ok := other.Int(); ok {
+			return sInt == other
 		}
 	}
 
 	if sFloat, ok := s.Float(); ok {
-		if otherFloat, ok := other.Float(); ok {
-			return sFloat == otherFloat
+		if other, ok := other.Float(); ok {
+			return sFloat == other
 		}
 	}
 
 	if sBool, ok := s.Bool(); ok {
-		if otherBool, ok := other.Bool(); ok {
-			return sBool == otherBool
+		if other, ok := other.Bool(); ok {
+			return sBool == other
 		}
 	}
 
@@ -256,6 +289,14 @@ func (b Binary) Pos() [2]int {
 	return b.pos
 }
 
+func (s Binary) EqualsSource(other Source) bool {
+	if other, ok := other.(Binary); ok {
+		return bytes.Equal(s.Value, other.Value)
+	}
+
+	return false
+}
+
 func (b Binary) Process(Definitions) (Node, error) {
 	return b, nil
 }
@@ -276,7 +317,7 @@ func (b Binary) String() string {
 	return string(b.Value)
 }
 
-func (b Binary) Equals(other Node) bool {
+func (b Binary) EqualsNode(other Node) bool {
 	return string(b.Value) == other.String()
 }
 

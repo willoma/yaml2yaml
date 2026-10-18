@@ -11,12 +11,14 @@ import (
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
+const mergeKey = "<<"
+
 func parseNode(basePath string, src *yaml.Node) (node.Source, error) {
 	switch src.Kind {
 	case yaml.DocumentNode:
 		return parseNode(basePath, src.Content[0])
 	case yaml.AliasNode:
-		return parseNode(basePath, src.Alias)
+		return parseAlias(basePath, src)
 	case yaml.SequenceNode:
 		return parseSequence(basePath, src)
 	case yaml.MappingNode:
@@ -38,6 +40,15 @@ func parseWithoutTag(basePath string, src *yaml.Node) (node.Source, error) {
 		Line:    src.Line,
 		Column:  src.Column,
 	})
+}
+
+func parseAlias(basePath string, src *yaml.Node) (*node.Alias, error) {
+	target, err := parseNode(basePath, src.Alias)
+	if err != nil {
+		return nil, errors.LocateByKey(src.Anchor, pos(src), err)
+	}
+
+	return node.NewAlias(pos(src), src.Anchor, target), nil
 }
 
 func parseSequence(basePath string, src *yaml.Node) (*node.SequenceSource, error) {
@@ -82,14 +93,32 @@ func parseMapping(basePath string, src *yaml.Node) (*node.MappingSource, error) 
 			continue
 		}
 
-		entry, err := parseMappingEntry(basePath, keyNode, value)
+		dirEntry, isDir, err := parseMappingDirective(basePath, keyNode, value)
 		if err != nil {
 			errs = errs.Append(locateMappingEntryError(i, basePath, keyNode, err))
 
 			continue
 		}
 
-		result.Value = append(result.Value, entry)
+		if isDir {
+			appendToMapping(result, dirEntry, true)
+
+			continue
+		}
+
+		key, err := parseNode(basePath, keyNode)
+		if err != nil {
+			return nil, err
+		}
+
+		entry := node.NewMappingEntrySource(key, value)
+		if entry.Key.String() == mergeKey {
+			if wasAlias := appendAliasesToMapping(result, entry.Value); wasAlias {
+				continue
+			}
+		}
+
+		appendToMapping(result, entry, true)
 	}
 
 	if err := errs.Compact(); err != nil {
@@ -99,30 +128,94 @@ func parseMapping(basePath string, src *yaml.Node) (*node.MappingSource, error) 
 	return result, nil
 }
 
-func parseMappingEntry(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
-	switch keyNode.Tag {
-	case directives.NameApply:
-		return parseMappingDirectiveApply(basePath, keyNode, value)
-	case directives.NameDefine:
-		return parseMappingDirectiveDefine(basePath, keyNode, value)
-	case directives.NameExpr:
-		return parseMappingDirectiveExpr(basePath, keyNode, value)
-	case directives.NameFmt:
-		return parseMappingDirectiveFmt(basePath, keyNode, value)
-	case directives.NameFor:
-		return parseMappingDirectiveFor(basePath, keyNode, value)
-	case directives.NameIf:
-		return parseMappingDirectiveIf(basePath, keyNode, value)
-	case directives.NameInclude:
-		return parseMappingDirectiveInclude(basePath, keyNode)
-	default:
-		key, err := parseNode(basePath, keyNode)
-		if err != nil {
-			return nil, err
+func appendAliasesToMapping(result *node.MappingSource, value node.Source) bool {
+	switch value := value.(type) {
+	case *node.Alias:
+		aliasMap, ok := value.Target.(*node.MappingSource)
+		if !ok {
+			return false
 		}
 
-		return node.NewMappingEntrySource(key, value), nil
+		for _, item := range aliasMap.Value {
+			appendToMapping(result, item, false)
+		}
+
+		return true
+
+	case *node.SequenceSource:
+		var items []node.Source
+
+		for _, entry := range value.Value {
+			alias, ok := entry.(*node.Alias)
+			if !ok {
+				return false
+			}
+
+			aliasMap, ok := alias.Target.(*node.MappingSource)
+			if !ok {
+				return false
+			}
+
+			items = append(items, aliasMap.Value...)
+		}
+
+		for _, item := range items {
+			appendToMapping(result, item, false)
+		}
+
+		return true
+
+	default:
+		return false
 	}
+}
+
+func appendToMapping(result *node.MappingSource, item node.Source, overwrite bool) {
+	if newEntry, ok := item.(*node.MappingEntrySource); ok {
+		for _, item := range result.Value {
+			entry, ok := item.(*node.MappingEntrySource)
+			if !ok {
+				continue
+			}
+
+			if entry.Key.EqualsSource(newEntry.Key) {
+				if overwrite {
+					entry.Value = newEntry.Value
+				}
+
+				return
+			}
+		}
+	}
+
+	result.Value = append(result.Value, item)
+}
+
+func parseMappingDirective(
+	basePath string, keyNode *yaml.Node, value node.Source,
+) (result node.Source, isDir bool, err error) {
+	switch keyNode.Tag {
+	case directives.NameApply:
+		result, err = parseMappingDirectiveApply(basePath, keyNode, value)
+	case directives.NameDefine:
+		result, err = parseMappingDirectiveDefine(basePath, keyNode, value)
+	case directives.NameExpr:
+		result, err = parseMappingDirectiveExpr(basePath, keyNode, value)
+	case directives.NameFmt:
+		result, err = parseMappingDirectiveFmt(basePath, keyNode, value)
+	case directives.NameFor:
+		result, err = parseMappingDirectiveFor(basePath, keyNode, value)
+	case directives.NameIf:
+		result, err = parseMappingDirectiveIf(basePath, keyNode, value)
+	case directives.NameInclude:
+		result, err = parseMappingDirectiveInclude(basePath, keyNode)
+	}
+
+	if err != nil {
+		return nil, false, err
+	}
+
+	return result, result != nil, nil
 }
 
 func parseMappingDirectiveApply(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
