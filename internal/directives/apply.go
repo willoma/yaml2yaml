@@ -61,3 +61,19 @@ func (a *dirApply) Process(defs node.Definitions) (node.Node, error) {
 
 	return result, nil
 }
+
+func (a *dirApply) PopulateDefs(defs node.Definitions) error {
+	nameNode, err := a.expr.Process(defs)
+	if err != nil {
+		return fmt.Errorf("name: %w", err)
+	}
+
+	name := nameNode.String()
+
+	def := defs.Get(name)
+	if def == nil {
+		return fmt.Errorf("%q %w", name, errors.ErrNotDefined)
+	}
+
+	return def.PopulateDefs(defs)
+}

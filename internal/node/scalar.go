@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -35,7 +36,7 @@ type (
 
 	Binary struct {
 		pos   [2]int
-		Value []byte
+		value []byte
 	}
 )
 
@@ -57,6 +58,10 @@ func (b Bool) EqualsSource(other Source) bool {
 
 func (b Bool) Process(Definitions) (Node, error) {
 	return b, nil
+}
+
+func (b Bool) PopulateDefs(Definitions) error {
+	return nil
 }
 
 func (b Bool) Bool() (value, ok bool) {
@@ -115,6 +120,10 @@ func (i Int) Process(Definitions) (Node, error) {
 	return i, nil
 }
 
+func (i Int) PopulateDefs(Definitions) error {
+	return nil
+}
+
 func (i Int) Bool() (value, ok bool) {
 	return i.value > 0, true
 }
@@ -161,6 +170,10 @@ func (f Float) EqualsSource(other Source) bool {
 
 func (f Float) Process(Definitions) (Node, error) {
 	return f, nil
+}
+
+func (f Float) PopulateDefs(Definitions) error {
+	return nil
 }
 
 func (f Float) Bool() (value, ok bool) {
@@ -215,6 +228,10 @@ func (s String) EqualsSource(other Source) bool {
 
 func (s String) Process(Definitions) (Node, error) {
 	return s, nil
+}
+
+func (s String) PopulateDefs(Definitions) error {
+	return nil
 }
 
 func (s String) Bool() (value, ok bool) {
@@ -282,7 +299,7 @@ func (s String) style() yaml.Style {
 }
 
 func NewBinary(pos [2]int, value []byte) Binary {
-	return Binary{pos: pos, Value: value}
+	return Binary{pos: pos, value: value}
 }
 
 func (b Binary) Pos() [2]int {
@@ -291,7 +308,7 @@ func (b Binary) Pos() [2]int {
 
 func (s Binary) EqualsSource(other Source) bool {
 	if other, ok := other.(Binary); ok {
-		return bytes.Equal(s.Value, other.Value)
+		return bytes.Equal(s.value, other.value)
 	}
 
 	return false
@@ -301,8 +318,12 @@ func (b Binary) Process(Definitions) (Node, error) {
 	return b, nil
 }
 
+func (b Binary) PopulateDefs(Definitions) error {
+	return nil
+}
+
 func (b Binary) Bool() (value, ok bool) {
-	return len(b.Value) > 0, false
+	return len(b.value) > 0, false
 }
 
 func (b Binary) Int() (int64, bool) {
@@ -314,13 +335,31 @@ func (b Binary) Float() (float64, bool) {
 }
 
 func (b Binary) String() string {
-	return string(b.Value)
+	return string(b.value)
 }
 
 func (b Binary) EqualsNode(other Node) bool {
-	return string(b.Value) == other.String()
+	return string(b.value) == other.String()
 }
 
 func (b Binary) ToYAML() *yaml.Node {
-	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!binary", Value: base64.StdEncoding.EncodeToString(b.Value)}
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!binary", Value: base64.StdEncoding.EncodeToString(b.value)}
+}
+
+func (b Binary) Append(other Binary) Binary {
+	return Binary{
+		pos:   b.pos,
+		value: append(slices.Clone(b.value), other.value...),
+	}
+}
+
+func (b Binary) Repeat(count int) Binary {
+	return Binary{
+		pos:   b.pos,
+		value: slices.Repeat(b.value, count),
+	}
+}
+
+func (b Binary) Compare(other Binary) int {
+	return bytes.Compare(b.value, other.value)
 }

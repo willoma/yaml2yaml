@@ -1,6 +1,8 @@
 package node
 
 import (
+	"iter"
+	"strconv"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
@@ -11,7 +13,7 @@ import (
 type (
 	SequenceSource struct {
 		pos   [2]int
-		Value []Source
+		value []Source
 	}
 
 	Sequence []Node
@@ -20,7 +22,7 @@ type (
 func NewSequenceSource(pos [2]int, length int) *SequenceSource {
 	return &SequenceSource{
 		pos:   pos,
-		Value: make([]Source, 0, length),
+		value: make([]Source, 0, length),
 	}
 }
 
@@ -29,12 +31,20 @@ func (s *SequenceSource) Pos() [2]int {
 }
 
 func (s *SequenceSource) String() string {
-	result := make([]string, len(s.Value))
-	for i, item := range s.Value {
+	result := make([]string, len(s.value))
+	for i, item := range s.value {
 		result[i] = item.String()
 	}
 
 	return "[" + strings.Join(result, ", ") + "]"
+}
+
+func (s *SequenceSource) Append(item Source) {
+	s.value = append(s.value, item)
+}
+
+func (s *SequenceSource) Size() int {
+	return len(s.value)
 }
 
 func (s *SequenceSource) EqualsSource(other Source) bool {
@@ -43,12 +53,12 @@ func (s *SequenceSource) EqualsSource(other Source) bool {
 		return false
 	}
 
-	if len(s.Value) != len(otherSeq.Value) {
+	if len(s.value) != len(otherSeq.value) {
 		return false
 	}
 
-	for i := range s.Value {
-		if !s.Value[i].EqualsSource(otherSeq.Value[i]) {
+	for i := range s.value {
+		if !s.value[i].EqualsSource(otherSeq.value[i]) {
 			return false
 		}
 	}
@@ -59,9 +69,9 @@ func (s *SequenceSource) EqualsSource(other Source) bool {
 func (s *SequenceSource) Process(defs Definitions) (Node, error) {
 	var errs errors.JoinedError
 
-	result := make(Sequence, 0, len(s.Value))
+	result := make(Sequence, 0, len(s.value))
 
-	for i, item := range s.Value {
+	for i, item := range s.value {
 		processed, err := item.Process(defs)
 		if err != nil {
 			errs = errs.Append(errors.LocateByIndex(i, s.pos, err))
@@ -77,6 +87,24 @@ func (s *SequenceSource) Process(defs Definitions) (Node, error) {
 	}
 
 	return result, nil
+}
+
+func (s *SequenceSource) PopulateDefs(defs Definitions) error {
+	for i, item := range s.value {
+		defs.Set(strconv.Itoa(i), item)
+	}
+
+	return nil
+}
+
+func (s *SequenceSource) Iter() iter.Seq2[int, Source] {
+	return func(yield func(int, Source) bool) {
+		for i, item := range s.value {
+			if !yield(i, item) {
+				return
+			}
+		}
+	}
 }
 
 func (s Sequence) Bool() (value, ok bool) {

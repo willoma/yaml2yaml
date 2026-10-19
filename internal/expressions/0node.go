@@ -42,3 +42,7 @@ func (s *Source) EqualsSource(other node.Source) bool {
 func (s *Source) Process(defs node.Definitions) (node.Node, error) {
 	return s.resolve(defs, s.expr)
 }
+
+func (s *Source) PopulateDefs(defs node.Definitions) error {
+	return nil
+}

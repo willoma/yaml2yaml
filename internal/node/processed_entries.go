@@ -45,7 +45,7 @@ func (p *ProcessedEntries) Append(key string, pos [2]int, value Node, err error)
 	}
 
 	switch value.(type) {
-	case Mapping, mappingEntry:
+	case Mapping, MappingEntry:
 		p.mappingsCount++
 	case Sequence:
 		p.sequencesCount++
@@ -64,7 +64,7 @@ func (p *ProcessedEntries) AppendIndexed(index int, pos [2]int, value Node, err 
 	}
 
 	switch value.(type) {
-	case Mapping, mappingEntry:
+	case Mapping, MappingEntry:
 		p.mappingsCount++
 	case Sequence:
 		p.sequencesCount++
@@ -109,7 +109,7 @@ func (p *ProcessedEntries) mapping() (Node, error) {
 
 	for _, entry := range p.entries {
 		switch value := entry.value.(type) {
-		case mappingEntry:
+		case MappingEntry:
 			newResult, err := result.mergeEntry(value)
 			if err != nil {
 				errs = errs.Append(entry.locateError(err))

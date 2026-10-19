@@ -12,27 +12,27 @@ import (
 type (
 	MappingSource struct {
 		pos   [2]int
-		Value []Source
+		value []Source
 	}
 
 	MappingEntrySource struct {
-		Key   Source
-		Value Source
+		key   Source
+		value Source
 	}
 
-	Mapping []mappingEntry
+	Mapping []MappingEntry
 
-	mappingEntry struct {
+	MappingEntry struct {
 		pos   [2]int
-		Key   Node
-		Value Node
+		key   Node
+		value Node
 	}
 )
 
 func NewMappingSource(pos [2]int, length int) *MappingSource {
 	return &MappingSource{
 		pos:   pos,
-		Value: make([]Source, 0, length),
+		value: make([]Source, 0, length),
 	}
 }
 
@@ -41,8 +41,8 @@ func (m *MappingSource) Pos() [2]int {
 }
 
 func (m *MappingSource) String() string {
-	result := make([]string, len(m.Value))
-	for i, item := range m.Value {
+	result := make([]string, len(m.value))
+	for i, item := range m.value {
 		result[i] = item.String()
 	}
 
@@ -55,12 +55,12 @@ func (m *MappingSource) EqualsSource(other Source) bool {
 		return false
 	}
 
-	if len(m.Value) != len(otherMap.Value) {
+	if len(m.value) != len(otherMap.value) {
 		return false
 	}
 
-	for i := range m.Value {
-		if !m.Value[i].EqualsSource(otherMap.Value[i]) {
+	for i := range m.value {
+		if !m.value[i].EqualsSource(otherMap.value[i]) {
 			return false
 		}
 	}
@@ -70,9 +70,9 @@ func (m *MappingSource) EqualsSource(other Source) bool {
 
 func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
 	defs := childDefs(parentDefs)
-	processed := NewProcessedEntries(len(m.Value))
+	processed := NewProcessedEntries(len(m.value))
 
-	for _, item := range m.Value {
+	for _, item := range m.value {
 		itemResult, err := item.Process(defs)
 
 		processed.Append(item.String(), item.Pos(), itemResult, err)
@@ -86,24 +86,99 @@ func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
 	return result, err
 }
 
+func (m *MappingSource) PopulateDefs(defs Definitions) error {
+	var errs errors.JoinedError
+
+	for _, item := range m.value {
+		if err := item.PopulateDefs(defs); err != nil {
+			errs = append(errs, errors.LocateByKey(item.String(), item.Pos(), err))
+		}
+	}
+
+	return errs.Compact()
+}
+
+func (m *MappingSource) Append(item Source, overwrite bool) {
+	if newEntry, ok := item.(*MappingEntrySource); ok {
+		for _, item := range m.value {
+			entry, ok := item.(*MappingEntrySource)
+			if !ok {
+				continue
+			}
+
+			if entry.key.EqualsSource(newEntry.key) {
+				if overwrite {
+					entry.value = newEntry.value
+				}
+
+				return
+			}
+		}
+	}
+
+	m.value = append(m.value, item)
+}
+
+func (m *MappingSource) AppendAlias(item Source) bool {
+	switch item := item.(type) {
+	case *Alias:
+		aliasMap, ok := item.target.(*MappingSource)
+		if !ok {
+			return false
+		}
+
+		for _, item := range aliasMap.value {
+			m.Append(item, false)
+		}
+
+		return true
+
+	case *SequenceSource:
+		var items []Source
+
+		for _, entry := range item.value {
+			alias, ok := entry.(*Alias)
+			if !ok {
+				return false
+			}
+
+			aliasMap, ok := alias.target.(*MappingSource)
+			if !ok {
+				return false
+			}
+
+			items = append(items, aliasMap.value...)
+		}
+
+		for _, item := range items {
+			m.Append(item, false)
+		}
+
+		return true
+
+	default:
+		return false
+	}
+}
+
 func NewMappingEntrySource(key, value Source) *MappingEntrySource {
 	return &MappingEntrySource{
-		Key:   key,
-		Value: value,
+		key:   key,
+		value: value,
 	}
 }
 
 func (m *MappingEntrySource) Pos() [2]int {
-	return m.Key.Pos()
+	return m.key.Pos()
 }
 
 func (m *MappingEntrySource) String() string {
-	return m.Key.String()
+	return m.key.String()
 }
 
 func (m *MappingEntrySource) EqualsSource(other Source) bool {
 	if otherEntry, ok := other.(*MappingEntrySource); ok {
-		return m.Key.EqualsSource(otherEntry.Key) && m.Value.EqualsSource(otherEntry.Value)
+		return m.key.EqualsSource(otherEntry.key) && m.value.EqualsSource(otherEntry.value)
 	}
 
 	return false
@@ -112,12 +187,12 @@ func (m *MappingEntrySource) EqualsSource(other Source) bool {
 func (m *MappingEntrySource) Process(defs Definitions) (Node, error) {
 	var errs errors.JoinedError
 
-	key, err := m.Key.Process(defs)
+	key, err := m.key.Process(defs)
 	if err != nil {
 		errs = errs.Append(err)
 	}
 
-	value, err := m.Value.Process(defs)
+	value, err := m.value.Process(defs)
 	if err != nil {
 		errs = errs.Append(err)
 	}
@@ -126,7 +201,18 @@ func (m *MappingEntrySource) Process(defs Definitions) (Node, error) {
 		return nil, err
 	}
 
-	return mappingEntry{pos: m.Pos(), Key: key, Value: value}, nil
+	return MappingEntry{pos: m.Pos(), key: key, value: value}, nil
+}
+
+func (m *MappingEntrySource) PopulateDefs(defs Definitions) error {
+	key, err := m.key.Process(defs)
+	if err != nil {
+		return err
+	}
+
+	defs.Set(key.String(), m.value)
+
+	return nil
 }
 
 func (m Mapping) Bool() (value, ok bool) {
@@ -177,14 +263,24 @@ func (m Mapping) ToYAML() *yaml.Node {
 	content := make([]*yaml.Node, 0, len(m)*2)
 
 	for _, item := range m {
-		if item.Key == nil || item.Value == nil {
+		if item.key == nil || item.value == nil {
 			continue
 		}
 
-		content = append(content, item.Key.ToYAML(), item.Value.ToYAML())
+		content = append(content, item.key.ToYAML(), item.value.ToYAML())
 	}
 
 	return &yaml.Node{Kind: yaml.MappingNode, Content: content}
+}
+
+func (m Mapping) GetValue(key string) (Node, error) {
+	for _, entry := range m {
+		if entry.key.String() == key {
+			return entry.value, nil
+		}
+	}
+
+	return nil, errors.ErrEmpty
 }
 
 func (m Mapping) Merge(other Mapping) (Mapping, error) {
@@ -204,9 +300,9 @@ func (m Mapping) Merge(other Mapping) (Mapping, error) {
 	return m, errs.Compact()
 }
 
-func (m Mapping) mergeEntry(value mappingEntry) (Mapping, error) {
+func (m Mapping) mergeEntry(value MappingEntry) (Mapping, error) {
 	for i, entry := range m {
-		if entry.Key.EqualsNode(value.Key) {
+		if entry.key.EqualsNode(value.key) {
 			newEntry, err := entry.merge(value)
 			if err != nil {
 				return nil, err
@@ -221,65 +317,73 @@ func (m Mapping) mergeEntry(value mappingEntry) (Mapping, error) {
 	return append(m, value), nil
 }
 
-func (m mappingEntry) Bool() (value, ok bool) {
-	return m.Value.Bool()
+func (m MappingEntry) Bool() (value, ok bool) {
+	return m.value.Bool()
 }
 
-func (m mappingEntry) Int() (int64, bool) {
-	return m.Value.Int()
+func (m MappingEntry) Int() (int64, bool) {
+	return m.value.Int()
 }
 
-func (m mappingEntry) Float() (float64, bool) {
-	return m.Value.Float()
+func (m MappingEntry) Float() (float64, bool) {
+	return m.value.Float()
 }
 
-func (m mappingEntry) String() string {
-	return m.Key.String()
+func (m MappingEntry) String() string {
+	return m.key.String()
 }
 
-func (m mappingEntry) EqualsNode(other Node) bool {
-	otherEntry, ok := other.(mappingEntry)
+func (m MappingEntry) EqualsNode(other Node) bool {
+	otherEntry, ok := other.(MappingEntry)
 	if !ok {
 		return false
 	}
 
-	return m.Key.EqualsNode(otherEntry.Key) && m.Value.EqualsNode(otherEntry.Value)
+	return m.key.EqualsNode(otherEntry.key) && m.value.EqualsNode(otherEntry.value)
 }
 
-func (m mappingEntry) ToYAML() *yaml.Node {
+func (m MappingEntry) ToYAML() *yaml.Node {
 	return &yaml.Node{
 		Kind:    yaml.MappingNode,
-		Content: []*yaml.Node{m.Key.ToYAML(), m.Value.ToYAML()},
+		Content: []*yaml.Node{m.key.ToYAML(), m.value.ToYAML()},
 	}
 }
 
-func (m mappingEntry) merge(other mappingEntry) (mappingEntry, error) {
-	switch value := m.Value.(type) {
+func (m MappingEntry) Key() Node {
+	return m.key
+}
+
+func (m MappingEntry) Value() Node {
+	return m.value
+}
+
+func (m MappingEntry) merge(other MappingEntry) (MappingEntry, error) {
+	switch value := m.value.(type) {
 	case Mapping:
-		oMapping, ok := other.Value.(Mapping)
+		oMapping, ok := other.value.(Mapping)
 		if !ok {
-			return mappingEntry{}, errors.ErrNotAMapping
+			return MappingEntry{}, errors.ErrNotAMapping
 		}
 
 		newValue, err := value.Merge(oMapping)
 		if err != nil {
-			return mappingEntry{}, err
+			return MappingEntry{}, err
 		}
 
-		m.Value = newValue
+		m.value = newValue
 
 		return m, nil
 	case Sequence:
-		oSequence, ok := other.Value.(Sequence)
+		oSequence, ok := other.value.(Sequence)
 		if !ok {
-			return mappingEntry{}, errors.ErrNotASequence
+			return MappingEntry{}, errors.ErrNotASequence
 		}
 
 		value = append(value, oSequence...)
-		m.Value = value
+		m.value = value
 
 		return m, nil
 	default:
-		return mappingEntry{}, errors.ErrMultipleScalarValues
+		return MappingEntry{}, errors.ErrMultipleScalarValues
 	}
 }

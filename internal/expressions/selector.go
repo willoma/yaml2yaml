@@ -29,11 +29,5 @@ func (s *Source) selector(defs node.Definitions, expr *ast.SelectorExpr) (node.N
 		return nil, errors.ErrNotAMapping
 	}
 
-	for _, entry := range xMap {
-		if entry.Key.String() == expr.Sel.Name {
-			return entry.Value, nil
-		}
-	}
-
-	return nil, errors.ErrEmpty
+	return xMap.GetValue(expr.Sel.Name)
 }

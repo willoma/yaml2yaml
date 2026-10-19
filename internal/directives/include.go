@@ -69,6 +69,10 @@ func (i *dirInclude) Process(defs node.Definitions) (node.Node, error) {
 	return i.file(defs, path)
 }
 
+func (i *dirInclude) PopulateDefs(defs node.Definitions) error {
+	return nil
+}
+
 func (i *dirInclude) dir(defs node.Definitions, path string) (node.Node, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {

@@ -42,3 +42,7 @@ func (d *dirDefine) Process(defs node.Definitions) (node.Node, error) {
 
 	return nil, errors.ErrEmpty
 }
+
+func (d *dirDefine) PopulateDefs(node.Definitions) error {
+	return nil
+}

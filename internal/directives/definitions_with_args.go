@@ -8,41 +8,26 @@ type definitionsWithArgs struct {
 	definitions map[string]node.Source
 }
 
-func defsWithArgs(parent node.Definitions, args node.Source) *definitionsWithArgs {
+func defsWithArgs(parent node.Definitions, args node.Source) (*definitionsWithArgs, error) {
 	defs := &definitionsWithArgs{
 		parent:      parent,
-		args:        make(map[string]node.Source),
 		definitions: make(map[string]node.Source),
 	}
 
 	if args == nil {
-		return defs
+		return defs, nil
 	}
 
-	defs.args["_"] = args
+	defs.definitions["_"] = args
 
-	mapping, ok := args.(*node.MappingSource)
-	if !ok {
-		return defs
+	if err := args.PopulateDefs(defs); err != nil {
+		return nil, err
 	}
 
-	for _, item := range mapping.Value {
-		entry, ok := item.(*node.MappingEntrySource)
-		if !ok {
-			// Ignore non-raw entries (ie. directives)
-			continue
-		}
+	defs.args = defs.definitions
+	defs.definitions = make(map[string]node.Source)
 
-		key, err := entry.Key.Process(parent)
-		if err != nil {
-			// Ignore erroneous keys
-			continue
-		}
-
-		defs.args[key.String()] = entry.Value
-	}
-
-	return defs
+	return defs, nil
 }
 
 func (d *definitionsWithArgs) Get(name string) node.Source {

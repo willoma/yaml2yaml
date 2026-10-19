@@ -71,16 +71,14 @@ func (s *Source) mathBinary(left node.Binary, right node.Node, op token.Token) (
 			return node.Binary{}, fmt.Errorf("right: %w", errors.ErrNotABinary)
 		}
 
-		return node.NewBinary(s.pos, append(left.Value, rbin.Value...)), nil
+		return left.Append(rbin), nil
 	case token.MUL:
 		rint, ok := right.Int()
 		if !ok {
 			return node.Binary{}, fmt.Errorf("right: %w", errors.ErrNotANumber)
 		}
 
-		left.Value = slices.Repeat(left.Value, int(rint))
-
-		return left, nil
+		return left.Repeat(int(rint)), nil
 	default:
 		return node.Binary{}, fmt.Errorf("%q: %w", op.String(), errors.ErrInvalidOperationWithBinaries)
 	}

@@ -64,14 +64,14 @@ func parseSequence(basePath string, src *yaml.Node) (*node.SequenceSource, error
 			continue
 		}
 
-		result.Value = append(result.Value, childNode)
+		result.Append(childNode)
 	}
 
 	if err := errs.Compact(); err != nil {
 		return nil, err
 	}
 
-	if len(result.Value) == 0 {
+	if result.Size() == 0 {
 		return nil, errors.ErrEmpty
 	}
 
@@ -101,7 +101,7 @@ func parseMapping(basePath string, src *yaml.Node) (*node.MappingSource, error) 
 		}
 
 		if isDir {
-			appendToMapping(result, dirEntry, true)
+			result.Append(dirEntry, true)
 
 			continue
 		}
@@ -111,14 +111,13 @@ func parseMapping(basePath string, src *yaml.Node) (*node.MappingSource, error) 
 			return nil, err
 		}
 
-		entry := node.NewMappingEntrySource(key, value)
-		if entry.Key.String() == mergeKey {
-			if wasAlias := appendAliasesToMapping(result, entry.Value); wasAlias {
+		if key.String() == mergeKey {
+			if wasAlias := result.AppendAlias(value); wasAlias {
 				continue
 			}
 		}
 
-		appendToMapping(result, entry, true)
+		result.Append(node.NewMappingEntrySource(key, value), true)
 	}
 
 	if err := errs.Compact(); err != nil {
@@ -126,69 +125,6 @@ func parseMapping(basePath string, src *yaml.Node) (*node.MappingSource, error) 
 	}
 
 	return result, nil
-}
-
-func appendAliasesToMapping(result *node.MappingSource, value node.Source) bool {
-	switch value := value.(type) {
-	case *node.Alias:
-		aliasMap, ok := value.Target.(*node.MappingSource)
-		if !ok {
-			return false
-		}
-
-		for _, item := range aliasMap.Value {
-			appendToMapping(result, item, false)
-		}
-
-		return true
-
-	case *node.SequenceSource:
-		var items []node.Source
-
-		for _, entry := range value.Value {
-			alias, ok := entry.(*node.Alias)
-			if !ok {
-				return false
-			}
-
-			aliasMap, ok := alias.Target.(*node.MappingSource)
-			if !ok {
-				return false
-			}
-
-			items = append(items, aliasMap.Value...)
-		}
-
-		for _, item := range items {
-			appendToMapping(result, item, false)
-		}
-
-		return true
-
-	default:
-		return false
-	}
-}
-
-func appendToMapping(result *node.MappingSource, item node.Source, overwrite bool) {
-	if newEntry, ok := item.(*node.MappingEntrySource); ok {
-		for _, item := range result.Value {
-			entry, ok := item.(*node.MappingEntrySource)
-			if !ok {
-				continue
-			}
-
-			if entry.Key.EqualsSource(newEntry.Key) {
-				if overwrite {
-					entry.Value = newEntry.Value
-				}
-
-				return
-			}
-		}
-	}
-
-	result.Value = append(result.Value, item)
 }
 
 func parseMappingDirective(

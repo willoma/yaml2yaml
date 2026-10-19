@@ -1,7 +1,6 @@
 package expressions
 
 import (
-	"bytes"
 	"go/token"
 
 	"github.com/willoma/yaml2yaml/internal/node"
@@ -78,11 +77,11 @@ func (s *Source) compareMappings(left, right node.Mapping, op token.Token) bool 
 	}
 
 	for i := range left {
-		if !s.binCompare(left[i].Key, right[i].Key, op) {
+		if !s.binCompare(left[i].Key(), right[i].Key(), op) {
 			return false
 		}
 
-		if !s.binCompare(left[i].Value, right[i].Value, op) {
+		if !s.binCompare(left[i].Value(), right[i].Value(), op) {
 			return false
 		}
 	}
@@ -102,7 +101,7 @@ func (s *Source) compareBools(left, right bool, op token.Token) bool {
 }
 
 func (s *Source) compareBinaries(left, right node.Binary, op token.Token) bool {
-	result := bytes.Compare(left.Value, right.Value)
+	result := left.Compare(right)
 
 	switch op {
 	case token.EQL:

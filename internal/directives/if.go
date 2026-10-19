@@ -52,3 +52,16 @@ func (i *dirIf) Process(defs node.Definitions) (node.Node, error) {
 
 	return i.value.Process(defs)
 }
+
+func (i *dirIf) PopulateDefs(defs node.Definitions) error {
+	cond, err := i.condition.Process(defs)
+	if err != nil {
+		return fmt.Errorf("condition: %w", err)
+	}
+
+	if ok, _ := cond.Bool(); !ok {
+		return nil
+	}
+
+	return i.value.PopulateDefs(defs)
+}
