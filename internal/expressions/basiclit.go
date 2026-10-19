@@ -8,7 +8,13 @@ import (
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
-func (s *Source) basicLit(expr *ast.BasicLit) node.Node {
+type nodeAndSource interface {
+	node.Node
+	node.Source
+}
+
+//nolint:ireturn // This is only to easily use this for getting [node.Node] or [node.Source].
+func (s *Source) basicLit(expr *ast.BasicLit) nodeAndSource {
 	switch expr.Kind {
 	case token.INT:
 		if value, err := strconv.ParseInt(expr.Value, 10, 64); err == nil {

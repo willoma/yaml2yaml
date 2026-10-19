@@ -147,7 +147,3 @@ func (f *dirFmt) Process(defs node.Definitions) (node.Node, error) {
 
 	return node.NewString(f.Pos(), buf.String()), nil
 }
-
-func (f *dirFmt) PopulateDefs(node.Definitions) error {
-	return nil
-}

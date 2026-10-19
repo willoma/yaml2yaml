@@ -7,7 +7,7 @@ import (
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
-func (s *Source) ident(defs node.Definitions, expr *ast.Ident) (node.Node, error) {
+func (s *Source) ident(defs node.Definitions, expr *ast.Ident) (node.Source, error) {
 	switch expr.Name {
 	case "true":
 		return node.NewBool(s.pos, true), nil
@@ -19,6 +19,15 @@ func (s *Source) ident(defs node.Definitions, expr *ast.Ident) (node.Node, error
 			return nil, errors.ErrEmpty
 		}
 
-		return def.Process(defs)
+		return def, nil
 	}
+}
+
+func (s *Source) identNode(defs node.Definitions, expr *ast.Ident) (node.Node, error) {
+	src, err := s.ident(defs, expr)
+	if err != nil {
+		return nil, err
+	}
+
+	return src.Process(defs)
 }

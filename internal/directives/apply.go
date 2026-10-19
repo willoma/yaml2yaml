@@ -2,7 +2,6 @@ package directives
 
 import (
 	oerrors "errors"
-	"fmt"
 
 	"github.com/willoma/yaml2yaml/errors"
 	"github.com/willoma/yaml2yaml/internal/expressions"
@@ -59,18 +58,16 @@ func (a *dirApply) Process(defs node.Definitions) (node.Node, error) {
 	return result, nil
 }
 
-func (a *dirApply) PopulateDefs(defs node.Definitions) error {
-	nameNode, err := a.expr.Process(defs)
+func (a *dirApply) SourceMap(defs node.Definitions) (map[string]node.Source, error) {
+	childDefs, err := defsWithArgs(defs, a.args)
 	if err != nil {
-		return fmt.Errorf("name: %w", err)
+		return nil, err
 	}
 
-	name := nameNode.String()
-
-	def := defs.Get(name)
-	if def == nil {
-		return fmt.Errorf("%q %w", name, errors.ErrNotDefined)
+	result, err := a.expr.SourceMap(childDefs)
+	if err != nil {
+		return nil, err
 	}
 
-	return def.PopulateDefs(defs)
+	return result, nil
 }

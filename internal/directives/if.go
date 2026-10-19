@@ -53,15 +53,20 @@ func (i *dirIf) Process(defs node.Definitions) (node.Node, error) {
 	return i.value.Process(defs)
 }
 
-func (i *dirIf) PopulateDefs(defs node.Definitions) error {
+func (i *dirIf) SourceMap(defs node.Definitions) (map[string]node.Source, error) {
 	cond, err := i.condition.Process(defs)
 	if err != nil {
-		return fmt.Errorf("condition: %w", err)
+		return nil, fmt.Errorf("condition: %w", err)
 	}
 
 	if ok, _ := cond.Bool(); !ok {
-		return nil
+		return nil, errors.ErrEmpty
 	}
 
-	return i.value.PopulateDefs(defs)
+	sourceMapper, ok := i.value.(node.SourceMapper)
+	if !ok {
+		return nil, errors.ErrNotAMapping
+	}
+
+	return sourceMapper.SourceMap(defs)
 }

@@ -45,7 +45,6 @@ func (f exprFunction) Pos() [2]int                                 { return [2]i
 func (f exprFunction) String() string                              { return "function call" }
 func (f exprFunction) EqualsSource(node.Source) bool               { return false }
 func (f exprFunction) Process(node.Definitions) (node.Node, error) { return f, nil }
-func (f exprFunction) PopulateDefs(node.Definitions) error         { return nil }
 
 func (f baseFun) Bool() (value, ok bool)    { return false, false }
 func (f baseFun) Int() (int64, bool)        { return 0, false }

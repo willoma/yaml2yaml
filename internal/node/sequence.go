@@ -2,7 +2,6 @@ package node
 
 import (
 	"iter"
-	"strconv"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
@@ -47,6 +46,14 @@ func (s *SequenceSource) Size() int {
 	return len(s.value)
 }
 
+func (s *SequenceSource) Get(i int) (Source, error) {
+	if len(s.value) <= i {
+		return nil, errors.ErrOutOfBounds
+	}
+
+	return s.value[i], nil
+}
+
 func (s *SequenceSource) EqualsSource(other Source) bool {
 	otherSeq, ok := other.(*SequenceSource)
 	if !ok {
@@ -87,14 +94,6 @@ func (s *SequenceSource) Process(defs Definitions) (Node, error) {
 	}
 
 	return result, nil
-}
-
-func (s *SequenceSource) PopulateDefs(defs Definitions) error {
-	for i, item := range s.value {
-		defs.Set(strconv.Itoa(i), item)
-	}
-
-	return nil
 }
 
 func (s *SequenceSource) Iter() iter.Seq2[int, Source] {

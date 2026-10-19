@@ -10,7 +10,7 @@ import (
 )
 
 func (s *Source) unary(defs node.Definitions, expr *ast.UnaryExpr) (node.Node, error) {
-	value, err := s.resolve(defs, expr.X)
+	value, err := s.resolveNode(defs, expr.X)
 	if err != nil {
 		return nil, err
 	}

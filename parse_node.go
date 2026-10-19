@@ -160,7 +160,7 @@ func parseMappingDirectiveApply(basePath string, keyNode *yaml.Node, value node.
 		return nil, err
 	}
 
-	return directives.Apply(name, value), nil
+	return directives.Apply(name, value)
 }
 
 func parseMappingDirectiveDefine(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {
@@ -235,7 +235,7 @@ func parseScalar(basePath string, src *yaml.Node) (node.Source, error) {
 			return nil, err
 		}
 
-		return directives.Apply(name, nil), nil
+		return directives.Apply(name, nil)
 	case directives.NameExpr:
 		expr, err := parseScalarWithoutTag(src)
 		if err != nil {

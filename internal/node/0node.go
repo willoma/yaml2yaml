@@ -14,8 +14,6 @@ type (
 		EqualsSource(other Source) bool
 		// Process generates a [Node] from the [Source].
 		Process(defs Definitions) (Node, error)
-		// PopulateDefs populates the [Definitions] with values from the [Source].
-		PopulateDefs(defs Definitions) error
 	}
 
 	// Node is a processed node, ready to be manipulated and converted back to a [yaml.Node].
@@ -33,5 +31,9 @@ type (
 		EqualsNode(other Node) bool
 		// ToYAML generates a [yaml.Node] from the [Node].
 		ToYAML() *yaml.Node
+	}
+
+	SourceMapper interface {
+		SourceMap(defs Definitions) (map[string]Source, error)
 	}
 )

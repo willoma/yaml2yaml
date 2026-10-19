@@ -60,10 +60,6 @@ func (b Bool) Process(Definitions) (Node, error) {
 	return b, nil
 }
 
-func (b Bool) PopulateDefs(Definitions) error {
-	return nil
-}
-
 func (b Bool) Bool() (value, ok bool) {
 	return b.value, true
 }
@@ -120,10 +116,6 @@ func (i Int) Process(Definitions) (Node, error) {
 	return i, nil
 }
 
-func (i Int) PopulateDefs(Definitions) error {
-	return nil
-}
-
 func (i Int) Bool() (value, ok bool) {
 	return i.value > 0, true
 }
@@ -170,10 +162,6 @@ func (f Float) EqualsSource(other Source) bool {
 
 func (f Float) Process(Definitions) (Node, error) {
 	return f, nil
-}
-
-func (f Float) PopulateDefs(Definitions) error {
-	return nil
 }
 
 func (f Float) Bool() (value, ok bool) {
@@ -228,10 +216,6 @@ func (s String) EqualsSource(other Source) bool {
 
 func (s String) Process(Definitions) (Node, error) {
 	return s, nil
-}
-
-func (s String) PopulateDefs(Definitions) error {
-	return nil
 }
 
 func (s String) Bool() (value, ok bool) {
@@ -316,10 +300,6 @@ func (s Binary) EqualsSource(other Source) bool {
 
 func (b Binary) Process(Definitions) (Node, error) {
 	return b, nil
-}
-
-func (b Binary) PopulateDefs(Definitions) error {
-	return nil
 }
 
 func (b Binary) Bool() (value, ok bool) {

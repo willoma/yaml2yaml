@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 
+	"github.com/willoma/yaml2yaml/errors"
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
@@ -40,9 +41,20 @@ func (s *Source) EqualsSource(other node.Source) bool {
 }
 
 func (s *Source) Process(defs node.Definitions) (node.Node, error) {
-	return s.resolve(defs, s.expr)
+	return s.resolveNode(defs, s.expr)
 }
 
-func (s *Source) PopulateDefs(defs node.Definitions) error {
-	return nil
+func (s *Source) SourceMap(defs node.Definitions) (map[string]node.Source, error) {
+	src, err := s.resolveSource(defs, s.expr)
+	if err != nil {
+		return nil, err
+	}
+
+	sourceMapper, ok := src.(node.SourceMapper)
+
+	if !ok {
+		return nil, errors.ErrNotAMapping
+	}
+
+	return sourceMapper.SourceMap(defs)
 }

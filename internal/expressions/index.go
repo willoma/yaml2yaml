@@ -8,15 +8,15 @@ import (
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
-func (s *Source) index(defs node.Definitions, expr *ast.IndexExpr) (node.Node, error) {
+func (s *Source) indexNode(defs node.Definitions, expr *ast.IndexExpr) (node.Node, error) {
 	var errs errors.JoinedError
 
-	value, err := s.resolve(defs, expr.X)
+	value, err := s.resolveNode(defs, expr.X)
 	if err != nil {
 		errs = errs.Append(fmt.Errorf("expression: %w", err))
 	}
 
-	indexNode, err := s.resolve(defs, expr.Index)
+	indexNode, err := s.resolveNode(defs, expr.Index)
 	if err != nil {
 		errs = errs.Append(fmt.Errorf("index: %w", err))
 	}
@@ -46,58 +46,36 @@ func (s *Source) index(defs node.Definitions, expr *ast.IndexExpr) (node.Node, e
 	return xSeq[index], nil
 }
 
-func (s *Source) indexList(defs node.Definitions, expr *ast.IndexListExpr) (node.Node, error) {
+func (s *Source) indexSource(defs node.Definitions, expr *ast.IndexExpr) (node.Source, error) {
 	var errs errors.JoinedError
 
-	value, err := s.resolve(defs, expr.X)
+	value, err := s.resolveSource(defs, expr.X)
 	if err != nil {
 		errs = errs.Append(fmt.Errorf("expression: %w", err))
 	}
 
-	var indices []int
-
-	for i, indexExpr := range expr.Indices {
-		indexNode, err := s.resolve(defs, indexExpr)
-		if err != nil {
-			errs = errs.Append(fmt.Errorf("index #%d: %w", i, err))
-
-			continue
-		}
-
-		index, ok := indexNode.Int()
-		if !ok {
-			errs = errs.Append(fmt.Errorf("index: %w", errors.ErrNotANumber))
-
-			continue
-		}
-
-		indices = append(indices, int(index))
+	indexNode, err := s.resolveNode(defs, expr.Index)
+	if err != nil {
+		errs = errs.Append(fmt.Errorf("index: %w", err))
 	}
 
 	if err := errs.Compact(); err != nil {
 		return nil, err
 	}
 
-	xSeq, ok := value.(node.Sequence)
+	xSeq, ok := value.(*node.SequenceSource)
 	if !ok {
-		return nil, fmt.Errorf("expression: %w", errors.ErrNotASequence)
+		errs = errs.Append(fmt.Errorf("expression: %w", errors.ErrNotASequence))
 	}
 
-	result := make(node.Sequence, len(indices))
-
-	for i, index := range indices {
-		if len(xSeq) <= index {
-			errs = errs.Append(fmt.Errorf("%d: %w", index, errors.ErrOutOfBounds))
-
-			continue
-		}
-
-		result[i] = xSeq[index]
+	index, ok := indexNode.Int()
+	if !ok {
+		errs = errs.Append(fmt.Errorf("index: %w", errors.ErrNotANumber))
 	}
 
 	if err := errs.Compact(); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return xSeq.Get(int(index))
 }

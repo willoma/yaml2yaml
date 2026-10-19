@@ -11,17 +11,17 @@ import (
 func (s *Source) slice(defs node.Definitions, expr *ast.SliceExpr) (node.Node, error) {
 	var errs errors.JoinedError
 
-	value, err := s.resolve(defs, expr.X)
+	value, err := s.resolveNode(defs, expr.X)
 	if err != nil {
 		errs = errs.Append(fmt.Errorf("expression: %w", err))
 	}
 
-	startNode, err := s.resolve(defs, expr.Low)
+	startNode, err := s.resolveNode(defs, expr.Low)
 	if err != nil {
 		errs = errs.Append(fmt.Errorf("start: %w", err))
 	}
 
-	endNode, err := s.resolve(defs, expr.High)
+	endNode, err := s.resolveNode(defs, expr.High)
 	if err != nil {
 		errs = errs.Append(fmt.Errorf("end: %w", err))
 	}

@@ -1,6 +1,11 @@
 package directives
 
-import "github.com/willoma/yaml2yaml/internal/node"
+import (
+	oerrors "errors"
+
+	"github.com/willoma/yaml2yaml/errors"
+	"github.com/willoma/yaml2yaml/internal/node"
+)
 
 type definitionsWithArgs struct {
 	parent      node.Definitions
@@ -18,14 +23,23 @@ func defsWithArgs(parent node.Definitions, args node.Source) (*definitionsWithAr
 		return defs, nil
 	}
 
-	defs.definitions["_"] = args
+	sourceMapper, ok := args.(node.SourceMapper)
+	if !ok {
+		defs.args = map[string]node.Source{"_": args}
 
-	if err := args.PopulateDefs(defs); err != nil {
+		return defs, nil
+	}
+
+	var err error
+
+	defs.args, err = sourceMapper.SourceMap(defs)
+	if oerrors.Is(err, errors.ErrEmpty) {
+		defs.args = make(map[string]node.Source)
+	} else if err != nil {
 		return nil, err
 	}
 
-	defs.args = defs.definitions
-	defs.definitions = make(map[string]node.Source)
+	defs.args["_"] = args
 
 	return defs, nil
 }

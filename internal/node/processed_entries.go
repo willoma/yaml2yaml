@@ -105,7 +105,7 @@ func (p *ProcessedEntries) errors() error {
 func (p *ProcessedEntries) mapping() (Node, error) {
 	var errs errors.JoinedError
 
-	result := make(Mapping, 0, len(p.entries))
+	result := make(Mapping, 0, p.mappingsCount)
 
 	for _, entry := range p.entries {
 		switch value := entry.value.(type) {

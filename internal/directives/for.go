@@ -3,6 +3,7 @@ package directives
 import (
 	oerrors "errors"
 	"fmt"
+	"maps"
 
 	"github.com/willoma/yaml2yaml/errors"
 	"github.com/willoma/yaml2yaml/internal/node"
@@ -64,13 +65,46 @@ func (f *dirFor) Process(defs node.Definitions) (node.Node, error) {
 	return processed.Result()
 }
 
-func (f *dirFor) PopulateDefs(defs node.Definitions) error {
+func (f *dirFor) SourceMap(defs node.Definitions) (map[string]node.Source, error) {
 	seq, err := f.getSeq(defs)
 	if err != nil {
-		return fmt.Errorf("sequence: %w", err)
+		return nil, fmt.Errorf("sequence: %w", err)
 	}
 
-	return seq.PopulateDefs(defs)
+	var errs errors.JoinedError
+
+	result := make(map[string]node.Source)
+
+	for i, item := range seq.Iter() {
+		childDefs, err := defsWithArgs(defs, item)
+		if err != nil {
+			errs = append(errs, errors.LocateByIndex(i, item.Pos(), err))
+
+			continue
+		}
+
+		childDefs.args["i"] = node.NewInt(f.sequence.Pos(), int64(i))
+
+		sourceMapper, ok := f.value.(node.SourceMapper)
+		if !ok {
+			errs = append(errs, errors.LocateByIndex(i, item.Pos(), errors.ErrNotAMapping))
+		}
+
+		mapSrc, err := sourceMapper.SourceMap(defs)
+		if err != nil {
+			errs = append(errs, errors.LocateByIndex(i, item.Pos(), err))
+
+			continue
+		}
+
+		maps.Copy(result, mapSrc)
+	}
+
+	if err := errs.Compact(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (f *dirFor) getSeq(defs node.Definitions) (*node.SequenceSource, error) {

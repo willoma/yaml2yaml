@@ -1,5 +1,7 @@
 package node
 
+import "github.com/willoma/yaml2yaml/errors"
+
 type Alias struct {
 	pos    [2]int
 	anchor string
@@ -30,6 +32,11 @@ func (a *Alias) Process(defs Definitions) (Node, error) {
 	return a.target.Process(defs)
 }
 
-func (a *Alias) PopulateDefs(defs Definitions) error {
-	return a.target.PopulateDefs(defs)
+func (a *Alias) SourceMap(defs Definitions) (map[string]Source, error) {
+	sourceMapper, ok := a.target.(SourceMapper)
+	if !ok {
+		return nil, errors.ErrNotAMapping
+	}
+
+	return sourceMapper.SourceMap(defs)
 }

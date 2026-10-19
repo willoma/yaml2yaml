@@ -86,16 +86,44 @@ func (m *MappingSource) Process(parentDefs Definitions) (Node, error) {
 	return result, err
 }
 
-func (m *MappingSource) PopulateDefs(defs Definitions) error {
+func (m *MappingSource) SourceMap(defs Definitions) (map[string]Source, error) {
+	defsMap := make(map[string]Source, len(m.value))
+
 	var errs errors.JoinedError
 
 	for _, item := range m.value {
-		if err := item.PopulateDefs(defs); err != nil {
-			errs = append(errs, errors.LocateByKey(item.String(), item.Pos(), err))
+		switch dItem := item.(type) {
+		case *MappingEntrySource:
+			key, err := dItem.key.Process(defs)
+			if err != nil {
+				errs = append(errs, errors.LocateByKey(item.String(), item.Pos(), err))
+
+				continue
+			}
+
+			defsMap[key.String()] = dItem.value
+		case SourceMapper:
+			itemDefs, err := dItem.SourceMap(defs)
+			if err != nil {
+				errs = append(errs, errors.LocateByKey(item.String(), item.Pos(), err))
+
+				continue
+			}
+
+			for name, value := range itemDefs {
+				// Only use the definition if it does not already exist (avoid overwriting a first-level definition).
+				if _, exists := defsMap[name]; !exists {
+					defsMap[name] = value
+				}
+			}
 		}
 	}
 
-	return errs.Compact()
+	if err := errs.Compact(); err != nil {
+		return nil, err
+	}
+
+	return defsMap, nil
 }
 
 func (m *MappingSource) Append(item Source, overwrite bool) {
@@ -117,6 +145,12 @@ func (m *MappingSource) Append(item Source, overwrite bool) {
 	}
 
 	m.value = append(m.value, item)
+}
+
+func (m *MappingSource) Merge(other *MappingSource) {
+	for _, item := range other.value {
+		m.Append(item, true)
+	}
 }
 
 func (m *MappingSource) AppendAlias(item Source) bool {
@@ -202,17 +236,6 @@ func (m *MappingEntrySource) Process(defs Definitions) (Node, error) {
 	}
 
 	return MappingEntry{pos: m.Pos(), key: key, value: value}, nil
-}
-
-func (m *MappingEntrySource) PopulateDefs(defs Definitions) error {
-	key, err := m.key.Process(defs)
-	if err != nil {
-		return err
-	}
-
-	defs.Set(key.String(), m.value)
-
-	return nil
 }
 
 func (m Mapping) Bool() (value, ok bool) {

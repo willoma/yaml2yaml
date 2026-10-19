@@ -11,7 +11,7 @@ import (
 func (s *Source) call(defs node.Definitions, expr *ast.CallExpr) (node.Node, error) {
 	var errs errors.JoinedError
 
-	fun, err := s.resolve(&definitionsWithFuns{parent: defs}, expr.Fun)
+	fun, err := s.resolveNode(&definitionsWithFuns{parent: defs}, expr.Fun)
 	if err != nil {
 		errs = errs.Append(fmt.Errorf("function: %w", err))
 	} else if fun == nil {
@@ -20,7 +20,7 @@ func (s *Source) call(defs node.Definitions, expr *ast.CallExpr) (node.Node, err
 
 	args := make([]node.Node, len(expr.Args))
 	for i, arg := range expr.Args {
-		argNode, err := s.resolve(defs, arg)
+		argNode, err := s.resolveNode(defs, arg)
 		if err != nil {
 			errs = errs.Append(fmt.Errorf("argument %d: %w", i+1, err))
 		}
