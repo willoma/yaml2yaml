@@ -20,7 +20,7 @@ func (e JoinedError) Error() string {
 
 	result.WriteString(e[0].Error())
 
-	for _, err := range e {
+	for _, err := range e[1:] {
 		result.WriteByte('\n')
 		result.WriteString(err.Error())
 	}
