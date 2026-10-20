@@ -122,13 +122,12 @@ by escaping it with `\`.
 
 ### `!for` — loop over a sequence
 
-Iterates over a sequence. The key may be the name of a previously defined
-sequence, an expression resolving to such a name, or an inline sequence. If a
-name is not defined, the loop produces nothing and does not fail; if it is
-defined but is not a sequence, an error is reported. If the body is a mapping,
-the result will be a mapping, merging the result of the loop calculation.
+Iterates over a sequence. The key is an expression that resolves to a sequence.
+If the body is a mapping, the result will be a mapping,
+merging the result of the loop calculation.
 If the body is a sequence, the result will be a sequence, joining all
-calculated sequences. If the body is a scalar, it returns an error.
+calculated sequences.
+If the body is a scalar, it returns an error.
 
 For each item, the zero-based index is bound to the name `i`. When the item
 is a mapping, each of its keys becomes a definition inside the loop body;
@@ -310,6 +309,10 @@ The following function calls are supported:
   - expects exactly one argument
   - returns `true` if the argument is a scalar value
   - returns `false` if the argument is a mapping or a sequence
+- `values`:
+  - expects exactly one argument
+  - raises an error if the argument is not a mapping
+  - returns a sequence, composed of the argument's values
 
 ## Example
 

@@ -1,59 +1,24 @@
 package expressions
 
 import (
-	"go.yaml.in/yaml/v4"
-
 	"github.com/willoma/yaml2yaml/errors"
 	"github.com/willoma/yaml2yaml/internal/node"
 )
 
 type (
-	callableFunction interface {
-		node.Node
-		Call(args []node.Node) (node.Node, error)
-	}
-	exprFunction struct{ callableFunction }
-
-	baseFun    struct{}
 	funLen     struct{ baseFun }
 	funIsValue struct{ baseFun }
-
-	definitionsWithFuns struct {
-		parent node.Definitions
-	}
+	funValues  struct{ baseFun }
 )
 
 //nolint:gochecknoglobals // This never changes.
 var funs = map[string]exprFunction{
 	"len":      {funLen{}},
 	"is_value": {funIsValue{}},
+	"values":   {funValues{}},
 }
 
-func (d *definitionsWithFuns) Get(name string) node.Source {
-	if fun, ok := funs[name]; ok {
-		return fun
-	}
-
-	return d.parent.Get(name)
-}
-
-func (d *definitionsWithFuns) Set(name string, value node.Source) {
-	d.parent.Set(name, value)
-}
-
-func (f exprFunction) Pos() [2]int                                 { return [2]int{} }
-func (f exprFunction) String() string                              { return "function call" }
-func (f exprFunction) EqualsSource(node.Source) bool               { return false }
-func (f exprFunction) Process(node.Definitions) (node.Node, error) { return f, nil }
-
-func (f baseFun) Bool() (value, ok bool)    { return false, false }
-func (f baseFun) Int() (int64, bool)        { return 0, false }
-func (f baseFun) Float() (float64, bool)    { return 0, false }
-func (f baseFun) String() string            { return "function call" }
-func (f baseFun) EqualsNode(node.Node) bool { return false }
-func (f baseFun) ToYAML() *yaml.Node        { return nil }
-
-func (f funLen) Call(args []node.Node) (node.Node, error) {
+func (f funLen) callNode(args []node.Node) (node.Node, error) {
 	if len(args) != 1 {
 		return nil, errors.ErrInvalidArgumentsCount
 	}
@@ -74,7 +39,28 @@ func (f funLen) Call(args []node.Node) (node.Node, error) {
 	return node.NewInt([2]int{}, length), nil
 }
 
-func (f funIsValue) Call(args []node.Node) (node.Node, error) {
+func (f funLen) callSource(args []node.Source) (node.Source, error) {
+	if len(args) != 1 {
+		return nil, errors.ErrInvalidArgumentsCount
+	}
+
+	var length int64
+
+	switch arg := args[0].(type) {
+	case *node.MappingSource:
+		length = int64(arg.Size())
+	case *node.SequenceSource:
+		length = int64(arg.Size())
+	case nil:
+		length = 0
+	default:
+		length = 1
+	}
+
+	return node.NewInt([2]int{}, length), nil
+}
+
+func (f funIsValue) callNode(args []node.Node) (node.Node, error) {
 	if len(args) != 1 {
 		return nil, errors.ErrInvalidArgumentsCount
 	}
@@ -87,4 +73,62 @@ func (f funIsValue) Call(args []node.Node) (node.Node, error) {
 	}
 
 	return node.NewBool([2]int{}, result), nil
+}
+
+func (f funIsValue) callSource(args []node.Source) (node.Source, error) {
+	if len(args) != 1 {
+		return nil, errors.ErrInvalidArgumentsCount
+	}
+
+	var result bool
+
+	switch args[0].(type) {
+	case node.Bool, node.Int, node.Float, node.String, node.Binary:
+		result = true
+	}
+
+	return node.NewBool([2]int{}, result), nil
+}
+
+func (f funValues) callNode(args []node.Node) (node.Node, error) {
+	if len(args) != 1 {
+		return nil, errors.ErrInvalidArgumentsCount
+	}
+
+	argMap, ok := args[0].(node.Mapping)
+	if !ok {
+		return nil, errors.ErrNotAMapping
+	}
+
+	result := make(node.Sequence, 0, len(argMap))
+
+	for _, item := range argMap {
+		result = append(result, item.Value())
+	}
+
+	return result, nil
+}
+
+func (f funValues) callSource(args []node.Source) (node.Source, error) {
+	if len(args) != 1 {
+		return nil, errors.ErrInvalidArgumentsCount
+	}
+
+	argMap, ok := args[0].(*node.MappingSource)
+	if !ok {
+		return nil, errors.ErrNotAMapping
+	}
+
+	result := node.NewSequenceSource([2]int{}, argMap.Size())
+
+	for item := range argMap.Iter() {
+		entry, ok := item.(*node.MappingEntrySource)
+		if !ok {
+			continue
+		}
+
+		result.Append(entry.Value())
+	}
+
+	return result, nil
 }

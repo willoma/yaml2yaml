@@ -206,7 +206,7 @@ func parseMappingDirectiveFor(basePath string, keyNode *yaml.Node, value node.So
 		return nil, err
 	}
 
-	return directives.For(sequence, value), nil
+	return directives.For(sequence, value)
 }
 
 func parseMappingDirectiveIf(basePath string, keyNode *yaml.Node, value node.Source) (node.Source, error) {

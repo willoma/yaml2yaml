@@ -50,24 +50,28 @@ func (s *Source) binarySource(defs node.Definitions, expr *ast.BinaryExpr) (node
 		return nil, fmt.Errorf("right: %w", rErr)
 	}
 
-	leftMap, lOK := left.(*node.MappingSource)
-	rightMap, rOK := right.(*node.MappingSource)
-
-	switch {
-	case !lOK && !rOK:
-		return nil, fmt.Errorf("left: %w, right: %w", errors.ErrNotAMapping, errors.ErrNotAMapping)
-	case !lOK:
-		return nil, fmt.Errorf("left: %w", errors.ErrNotAMapping)
-	case !rOK:
-		return nil, fmt.Errorf("right: %w", errors.ErrNotAMapping)
-	}
-
-	// The only operation supported is adding two maps...
+	// The only operation supported for sources is "+", to merge sequences or maps.
 	if expr.Op != token.ADD {
 		return nil, errors.ErrUnsupportedOperator
 	}
 
-	leftMap.Merge(rightMap)
+	if lmap, ok := left.(*node.MappingSource); ok {
+		if rmap, ok := right.(*node.MappingSource); ok {
+			result := lmap.Clone()
+			result.Merge(rmap)
 
-	return leftMap, nil
+			return result, nil
+		}
+	}
+
+	if lseq, ok := left.(*node.SequenceSource); ok {
+		if rseq, ok := right.(*node.SequenceSource); ok {
+			result := lseq.Clone()
+			result.Merge(rseq)
+
+			return result, nil
+		}
+	}
+
+	return nil, errors.ErrUnsupportedExpression
 }

@@ -2,6 +2,7 @@ package node
 
 import (
 	"iter"
+	"slices"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
@@ -40,6 +41,19 @@ func (s *SequenceSource) String() string {
 
 func (s *SequenceSource) Append(item Source) {
 	s.value = append(s.value, item)
+}
+
+func (m *SequenceSource) Clone() *SequenceSource {
+	return &SequenceSource{
+		pos:   m.pos,
+		value: slices.Clone(m.value),
+	}
+}
+
+func (m *SequenceSource) Merge(other *SequenceSource) {
+	for _, item := range other.value {
+		m.Append(item)
+	}
 }
 
 func (s *SequenceSource) Size() int {

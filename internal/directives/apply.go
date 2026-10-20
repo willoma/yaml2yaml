@@ -11,7 +11,7 @@ import (
 const NameApply = "!apply"
 
 type dirApply struct {
-	expr *expressions.Source
+	name *expressions.Source
 	args node.Source
 }
 
@@ -21,20 +21,20 @@ func Apply(expr, args node.Source) (*dirApply, error) {
 		return nil, err
 	}
 
-	return &dirApply{expr: exprSrc, args: args}, nil
+	return &dirApply{name: exprSrc, args: args}, nil
 }
 
 func (a *dirApply) Pos() [2]int {
-	return a.expr.Pos()
+	return a.name.Pos()
 }
 
 func (a *dirApply) String() string {
-	return NameApply + " " + a.expr.String()
+	return NameApply + " " + a.name.String()
 }
 
 func (a *dirApply) EqualsSource(other node.Source) bool {
 	if other, ok := other.(*dirApply); ok {
-		return a.expr.EqualsSource(other.expr) && a.args.EqualsSource(other.args)
+		return a.name.EqualsSource(other.name) && a.args.EqualsSource(other.args)
 	}
 
 	return false
@@ -46,7 +46,7 @@ func (a *dirApply) Process(defs node.Definitions) (node.Node, error) {
 		return nil, err
 	}
 
-	result, err := a.expr.Process(childDefs)
+	result, err := a.name.Process(childDefs)
 	if err != nil {
 		if oerrors.Is(err, errors.ErrEmpty) {
 			childDefs.passToParent()
@@ -64,7 +64,7 @@ func (a *dirApply) SourceMap(defs node.Definitions) (map[string]node.Source, err
 		return nil, err
 	}
 
-	result, err := a.expr.SourceMap(childDefs)
+	result, err := a.name.SourceMap(childDefs)
 	if err != nil {
 		return nil, err
 	}

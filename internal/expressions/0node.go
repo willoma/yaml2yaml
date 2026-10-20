@@ -44,6 +44,10 @@ func (s *Source) Process(defs node.Definitions) (node.Node, error) {
 	return s.resolveNode(defs, s.expr)
 }
 
+func (s *Source) Source(defs node.Definitions) (node.Source, error) {
+	return s.resolveSource(defs, s.expr)
+}
+
 func (s *Source) SourceMap(defs node.Definitions) (map[string]node.Source, error) {
 	src, err := s.resolveSource(defs, s.expr)
 	if err != nil {

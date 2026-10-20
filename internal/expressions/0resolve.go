@@ -34,7 +34,7 @@ func (s *Source) resolveNode(defs node.Definitions, expr ast.Expr) (node.Node, e
 		return s.slice(defs, expr)
 
 	case *ast.CallExpr:
-		return s.call(defs, expr)
+		return s.callNode(defs, expr)
 
 	case *ast.UnaryExpr:
 		return s.unary(defs, expr)
@@ -77,7 +77,7 @@ func (s *Source) resolveSource(defs node.Definitions, expr ast.Expr) (node.Sourc
 		return nil, errors.ErrNotAMapping
 
 	case *ast.CallExpr:
-		return nil, errors.ErrNotAMapping
+		return s.callSource(defs, expr)
 
 	case *ast.UnaryExpr:
 		return nil, errors.ErrNotAMapping

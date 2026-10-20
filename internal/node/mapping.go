@@ -2,6 +2,8 @@ package node
 
 import (
 	oerrors "errors"
+	"iter"
+	"slices"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
@@ -47,6 +49,10 @@ func (m *MappingSource) String() string {
 	}
 
 	return "{" + strings.Join(result, ", ") + "}"
+}
+
+func (m *MappingSource) Size() int {
+	return len(m.value)
 }
 
 func (m *MappingSource) EqualsSource(other Source) bool {
@@ -147,6 +153,13 @@ func (m *MappingSource) Append(item Source, overwrite bool) {
 	m.value = append(m.value, item)
 }
 
+func (m *MappingSource) Clone() *MappingSource {
+	return &MappingSource{
+		pos:   m.pos,
+		value: slices.Clone(m.value),
+	}
+}
+
 func (m *MappingSource) Merge(other *MappingSource) {
 	for _, item := range other.value {
 		m.Append(item, true)
@@ -195,6 +208,16 @@ func (m *MappingSource) AppendAlias(item Source) bool {
 	}
 }
 
+func (m *MappingSource) Iter() iter.Seq[Source] {
+	return func(yield func(Source) bool) {
+		for _, item := range m.value {
+			if !yield(item) {
+				return
+			}
+		}
+	}
+}
+
 func NewMappingEntrySource(key, value Source) *MappingEntrySource {
 	return &MappingEntrySource{
 		key:   key,
@@ -236,6 +259,10 @@ func (m *MappingEntrySource) Process(defs Definitions) (Node, error) {
 	}
 
 	return MappingEntry{pos: m.Pos(), key: key, value: value}, nil
+}
+
+func (m *MappingEntrySource) Value() Source {
+	return m.value
 }
 
 func (m Mapping) Bool() (value, ok bool) {
