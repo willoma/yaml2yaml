@@ -30,7 +30,7 @@ func (s *Source) binaryNode(defs node.Definitions, expr *ast.BinaryExpr) (node.N
 		return s.binLogical(left, right, expr.Op), nil
 
 	case token.EQL, token.LSS, token.GTR, token.NEQ, token.LEQ, token.GEQ:
-		return node.NewBool(s.pos, s.binCompare(left, right, expr.Op)), nil
+		return node.NewBool(s.pos, binCompare(left, right, expr.Op)), nil
 
 	default:
 		return nil, fmt.Errorf("%q: %w in binary expression", expr.Op.String(), errors.ErrUnsupportedOperator)

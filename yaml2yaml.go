@@ -10,7 +10,10 @@ import (
 	"github.com/willoma/yaml2yaml/internal/read"
 )
 
-const indentSize = 2
+const (
+	indentSize = 2
+	lineWidth  = -1
+)
 
 // ProcessBytes converts a YAML byte slice to a YAML byte slice, with any processing applied.
 func ProcessBytes(src []byte) ([]byte, error) {
@@ -39,7 +42,7 @@ func processToBytes(basePath string, src *yaml.Node) ([]byte, error) {
 		return nil, err
 	}
 
-	result, err := yaml.Dump(parsed, yaml.WithIndent(indentSize), yaml.WithLineWidth(-1))
+	result, err := yaml.Dump(parsed, yaml.WithIndent(indentSize), yaml.WithLineWidth(lineWidth))
 	if err != nil {
 		return nil, fmt.Errorf("converting data to YAML: %w", err)
 	}
